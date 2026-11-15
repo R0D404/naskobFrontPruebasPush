@@ -23,7 +23,6 @@ export class ExportarReporteService {
     // Metadatos del informe
     filas.push('REPORTE TECNICO NASKOB - ROTACION RESILIENTE');
     filas.push(`Fecha de emision,${new Date().toLocaleDateString('es-MX')}`);
-    filas.push('Region,Chiapas');
     filas.push(`Superficie parcela (ha),${parcela ? parcela.area_ha : 'No delimitada'}`);
     filas.push(`Tipo de tierra,${declaracion.tipo_tierra}`);
     filas.push(

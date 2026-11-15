@@ -5,7 +5,6 @@ import {
   Download,
   AlertTriangle,
   Info,
-  Satellite,
   Loader2,
   Save,
   Check,
@@ -22,7 +21,7 @@ import { ExportarReporteService } from '@/application/services/ExportarReporteSe
 import { TarjetaEscenarioDetalle } from '@/presentation/components/domain/TarjetaEscenarioDetalle';
 import { guardarParcelaLocal } from '@/utils/parcelasStorage';
 
-export type SubvistaComparador = 'lista' | 'detalle' | 'auditoria';
+export type SubvistaComparador = 'lista' | 'detalle';
 
 export interface CompararEscenariosViewProps {
   declaracion: DeclaracionCompleta;
@@ -368,134 +367,7 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
           <TarjetaEscenarioDetalle
             escenario={escenarioActual}
             alVolverAPropuestas={() => setSubvista('lista')}
-            alAbrirAuditoria={() => setSubvista('auditoria')}
           />
-        )}
-
-        {/* ============================================================== */}
-        {/* VISTA 3: TRAZABILIDAD DE CIFRA (AUDITORÍA SATELITAL NASA)        */}
-        {/* ============================================================== */}
-        {subvista === 'auditoria' && escenarioActual && (
-          <div className="space-y-3.5 animate-fade-in flex flex-col pb-4">
-            {/* Header de Auditoría */}
-            <div className="flex items-center justify-between pt-1">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSubvista('detalle')}
-                  className="p-2 -ml-2 rounded-full hover:bg-slate-200/70 transition-colors text-slate-700 cursor-pointer"
-                  title="Volver al Detalle"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                  Trazabilidad de Cifra
-                </h1>
-              </div>
-              <span className="px-2.5 py-1 bg-slate-200 text-slate-700 text-xs font-bold rounded-full">
-                Auditoría NASA
-              </span>
-            </div>
-
-            {/* Ficha técnica satelital */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-base font-extrabold text-slate-900">
-                    Ficha Técnica Satelital ({escenarioActual.nombre})
-                  </h2>
-                  <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                    Auditoría de datos evaluados con satélites NASA:
-                  </p>
-                </div>
-                <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full shrink-0">
-                  Validez OK
-                </span>
-              </div>
-
-              {escenarioActual.trazabilidad ? (
-                <div className="divide-y divide-slate-100 text-xs">
-                  <div className="py-2 flex justify-between items-center gap-2">
-                    <span className="text-slate-500 font-medium">Fuentes NASA</span>
-                    <span className="font-bold text-slate-900 text-right">
-                      {escenarioActual.trazabilidad.fuentesNasa}
-                    </span>
-                  </div>
-                  <div className="py-2 flex justify-between items-center gap-2">
-                    <span className="text-slate-500 font-medium">Serie Histórica</span>
-                    <span className="font-mono text-slate-700">
-                      {escenarioActual.trazabilidad.serieHistorica}
-                    </span>
-                  </div>
-                  <div className="py-2 flex justify-between items-center gap-2">
-                    <span className="text-slate-500 font-medium">Resolución Espacial</span>
-                    <span className="font-mono text-slate-700">
-                      {escenarioActual.trazabilidad.resolucion}
-                    </span>
-                  </div>
-                  <div className="py-2 flex justify-between items-center gap-2">
-                    <span className="text-slate-500 font-medium">f_val (Calidad datos)</span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {escenarioActual.trazabilidad.fVal}
-                    </span>
-                  </div>
-                  <div className="py-2 flex justify-between items-center gap-2">
-                    <span className="text-slate-500 font-medium">Filtro Riego RC5</span>
-                    <span className="font-mono text-emerald-700 font-bold">
-                      {escenarioActual.trazabilidad.filtroRc5}
-                    </span>
-                  </div>
-                  <div className="py-2 flex justify-between items-center gap-2">
-                    <span className="text-slate-500 font-medium">Versión Algoritmo</span>
-                    <span className="font-mono text-slate-700">
-                      {escenarioActual.trazabilidad.versionAlgoritmo}
-                    </span>
-                  </div>
-                  <div className="py-2 flex justify-between items-center gap-2">
-                    <span className="text-slate-500 font-medium">ID Ejecución</span>
-                    <span className="font-mono text-slate-900 font-bold">
-                      {escenarioActual.trazabilidad.idEjecucion}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-slate-500">
-                  ID de Evaluación: {evaluacion.id_evaluacion}
-                </p>
-              )}
-            </div>
-
-            {/* Transparencia Algorítmica */}
-            <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-3.5 space-y-1.5 text-xs text-blue-950">
-              <h3 className="font-bold text-blue-900 flex items-center gap-1.5">
-                <Satellite className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>Transparencia Algorítmica</span>
-              </h3>
-              <p className="text-[11px] leading-relaxed text-blue-900/80">
-                Las reglas de recomendación son deterministas y pueden ser verificadas sin conexión con el motor open-source de la PWA. No se generan predicciones meteorológicas a futuro, sino evaluaciones de estabilidad frente a la serie histórica 2001–2025.
-              </p>
-            </div>
-
-            {/* Botones de navegación */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => setSubvista('detalle')}
-                className="w-full sm:flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold text-xs shadow-md hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Volver al Detalle</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSubvista('lista')}
-                className="w-full sm:w-auto py-3 px-4 bg-white border border-slate-300 text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors flex items-center justify-center cursor-pointer"
-              >
-                <span>Ir a Propuestas</span>
-              </button>
-            </div>
-          </div>
         )}
       </div>
     </div>

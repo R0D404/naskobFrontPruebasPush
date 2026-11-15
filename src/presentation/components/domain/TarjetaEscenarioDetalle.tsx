@@ -7,8 +7,6 @@ import {
   Clock,
   Sprout,
   Info,
-  FileText,
-  ChevronRight,
   Sparkles,
 } from 'lucide-react';
 import { EscenarioResultado } from '@/domain/models/evaluacion';
@@ -16,13 +14,11 @@ import { EscenarioResultado } from '@/domain/models/evaluacion';
 export interface TarjetaEscenarioDetalleProps {
   escenario: EscenarioResultado;
   alVolverAPropuestas: () => void;
-  alAbrirAuditoria: () => void;
 }
 
 export const TarjetaEscenarioDetalle: React.FC<TarjetaEscenarioDetalleProps> = ({
   escenario,
   alVolverAPropuestas,
-  alAbrirAuditoria,
 }) => {
   const tarjeta = escenario.tarjeta_5_partes;
   const scoreAjuste = escenario.puntaje_valor;
@@ -316,19 +312,6 @@ export const TarjetaEscenarioDetalle: React.FC<TarjetaEscenarioDetalleProps> = (
             <strong>Nota de campo:</strong> Esta herramienta apoya tu decisión; no sustituye la experiencia local ni a un técnico agrícola.
           </p>
         </div>
-
-        {/* Botón Auditoría Satelital Técnica */}
-        {escenario.trazabilidad && (
-          <button
-            type="button"
-            onClick={alAbrirAuditoria}
-            className="w-full py-2.5 bg-slate-50 border border-slate-300 text-slate-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors shadow-xs cursor-pointer"
-          >
-            <FileText className="w-4 h-4 text-slate-500" />
-            <span>Ver trazabilidad satelital técnica (Auditoría) →</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          </button>
-        )}
 
         {/* Botón Primario: Volver a Propuestas */}
         <button
