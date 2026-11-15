@@ -35,32 +35,17 @@ function mapearRespuestaEvaluacion(data: any, idParcelaFallback: string): Evalua
   const escenariosRaw = data.escenarios || [];
 
   // Determinar cuál es el escenario recomendado (sólo 1):
-  // 1. Si el backend envió explícitamente tipo_badge === 'recomendado' o badge === 'Recomendado'
-  // 2. Si no, aquel que tenga código 'B' (convención usual en rotaciones)
-  // 3. Si no, el primer escenario alternativo (no línea base) con mejor puntaje
+  // REGLA: La card recomendada DEBE ser la alternativa (no línea base) con mayor porcentaje/puntaje.
   let codigoRecomendado = '';
-  const explicitRec = escenariosRaw.find(
-    (e: any) => !e.es_linea_base && (e.tipo_badge === 'recomendado' || e.badge === 'Recomendado')
-  );
-  if (explicitRec) {
-    codigoRecomendado = (explicitRec.codigo_escenario || explicitRec.codigo || '').toUpperCase();
-  } else {
-    const fallbackB = escenariosRaw.find(
-      (e: any) => !e.es_linea_base && (e.codigo_escenario || e.codigo || '').toUpperCase() === 'B'
-    );
-    if (fallbackB) {
-      codigoRecomendado = 'B';
-    } else {
-      const alternativos = escenariosRaw.filter((e: any) => !e.es_linea_base);
-      if (alternativos.length > 0) {
-        const mejor = [...alternativos].sort((a: any, b: any) => {
-          const ptA = a.puntaje_mediana ?? a.puntaje_valor ?? 0;
-          const ptB = b.puntaje_mediana ?? b.puntaje_valor ?? 0;
-          return ptB - ptA;
-        })[0];
-        codigoRecomendado = (mejor.codigo_escenario || mejor.codigo || '').toUpperCase();
-      }
-    }
+  const alternativos = escenariosRaw.filter((e: any) => !e.es_linea_base);
+  if (alternativos.length > 0) {
+    const ordenados = [...alternativos].sort((a: any, b: any) => {
+      const ptA = Number(a.puntaje_mediana ?? a.puntaje_valor ?? a.puntuacion_final ?? 0);
+      const ptB = Number(b.puntaje_mediana ?? b.puntaje_valor ?? b.puntuacion_final ?? 0);
+      return ptB - ptA;
+    });
+    const mejor = ordenados[0];
+    codigoRecomendado = (mejor.codigo_escenario || mejor.codigo || '').toUpperCase();
   }
 
   const escenariosMapeados: EscenarioResultado[] = escenariosRaw.map((esc: any) => {
@@ -121,8 +106,8 @@ function mapearRespuestaEvaluacion(data: any, idParcelaFallback: string): Evalua
 
   // Ordenamiento de cards:
   // 1° Posición: Continuidad (Línea Base)
-  // 2° Posición: Recomendada (debajo de continuidad)
-  // 3°+ Posición: Resto de alternativas de rotación
+  // 2° Posición: Recomendada (la alternativa con mayor porcentaje, debajo de continuidad)
+  // 3°+ Posición: Resto de alternativas de rotación ordenadas de mayor a menor puntaje
   const escenariosOrdenados = [...escenariosMapeados].sort((a, b) => {
     if (a.es_linea_base && !b.es_linea_base) return -1;
     if (!a.es_linea_base && b.es_linea_base) return 1;
@@ -134,7 +119,8 @@ function mapearRespuestaEvaluacion(data: any, idParcelaFallback: string): Evalua
     if (aEsRecomendado && !bEsRecomendado) return -1;
     if (!aEsRecomendado && bEsRecomendado) return 1;
 
-    return 0;
+    // Ordenar de mayor a menor puntaje/porcentaje
+    return (b.puntaje_valor ?? 0) - (a.puntaje_valor ?? 0);
   });
 
   return {

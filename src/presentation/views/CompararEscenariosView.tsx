@@ -59,7 +59,10 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
   const handleGuardarParcela = async () => {
     if (!parcela) return;
     setGuardandoEnNube(true);
-    const mejorCultivo = evaluacion?.escenarios[0]?.nombre || 'Frijol';
+    const recEscenario = evaluacion?.escenarios.find(
+      (e) => e.tipo_badge === 'recomendado' || e.badge === 'Recomendado'
+    );
+    const mejorCultivo = recEscenario?.nombre || evaluacion?.escenarios[1]?.nombre || evaluacion?.escenarios[0]?.nombre || 'Frijol';
 
     let idRemoto = parcela.id_parcela;
     const esLocal = !idRemoto || idRemoto.startsWith('parc_') || idRemoto === 'parcela_activa';
@@ -126,7 +129,8 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
       );
       setEvaluacion(resultado);
       if (resultado.escenarios.length > 0) {
-        setCodigoSeleccionado(resultado.escenarios[0].codigo_escenario);
+        const rec = resultado.escenarios.find((e) => e.tipo_badge === 'recomendado' || e.badge === 'Recomendado');
+        setCodigoSeleccionado(rec?.codigo_escenario || resultado.escenarios[0].codigo_escenario);
       }
       setErrorRed(false);
     } catch (error: any) {
@@ -149,7 +153,8 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
     if (evaluacionInicial) {
       setEvaluacion(evaluacionInicial);
       if (evaluacionInicial.escenarios.length > 0) {
-        setCodigoSeleccionado(evaluacionInicial.escenarios[0].codigo_escenario);
+        const rec = evaluacionInicial.escenarios.find((e) => e.tipo_badge === 'recomendado' || e.badge === 'Recomendado');
+        setCodigoSeleccionado(rec?.codigo_escenario || evaluacionInicial.escenarios[0].codigo_escenario);
       }
       setCargando(false);
       return;
@@ -352,19 +357,42 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
             {/* Mapeo dinámico de escenarios desde la API */}
             <div className="space-y-3 pt-1">
               {(() => {
-                const escenariosParaMostrar = [...evaluacion.escenarios].sort((a, b) => {
-                  if (a.es_linea_base && !b.es_linea_base) return -1;
-                  if (!a.es_linea_base && b.es_linea_base) return 1;
-                  if (a.es_linea_base && b.es_linea_base) return 0;
+                // La alternativa con mayor puntaje debe ser la recomendada (debajo de Continuidad)
+                const alternativos = evaluacion.escenarios.filter((e) => !e.es_linea_base);
+                let codigoMayorPuntaje = '';
+                if (alternativos.length > 0) {
+                  const ordenados = [...alternativos].sort(
+                    (a, b) => (b.puntaje_valor ?? 0) - (a.puntaje_valor ?? 0)
+                  );
+                  codigoMayorPuntaje = ordenados[0].codigo_escenario;
+                }
 
-                  const aRec = a.tipo_badge === 'recomendado' || a.badge === 'Recomendado';
-                  const bRec = b.tipo_badge === 'recomendado' || b.badge === 'Recomendado';
+                const escenariosParaMostrar = evaluacion.escenarios
+                  .map((item) => {
+                    if (item.es_linea_base) return item;
+                    const esMayor = item.codigo_escenario === codigoMayorPuntaje;
+                    return {
+                      ...item,
+                      badge: esMayor ? 'Recomendado' : 'Rotación',
+                      tipo_badge: esMayor ? ('recomendado' as const) : ('alternativa' as const),
+                    };
+                  })
+                  .sort((a, b) => {
+                    // 1° Posición: Línea Base / Continuidad
+                    if (a.es_linea_base && !b.es_linea_base) return -1;
+                    if (!a.es_linea_base && b.es_linea_base) return 1;
+                    if (a.es_linea_base && b.es_linea_base) return 0;
 
-                  if (aRec && !bRec) return -1;
-                  if (!aRec && bRec) return 1;
+                    // 2° Posición: Recomendado (mayor puntaje)
+                    const aRec = a.tipo_badge === 'recomendado' || a.badge === 'Recomendado';
+                    const bRec = b.tipo_badge === 'recomendado' || b.badge === 'Recomendado';
 
-                  return 0;
-                });
+                    if (aRec && !bRec) return -1;
+                    if (!aRec && bRec) return 1;
+
+                    // 3°+ Posición: Resto de alternativas ordenadas por puntaje descendente
+                    return (b.puntaje_valor ?? 0) - (a.puntaje_valor ?? 0);
+                  });
 
                 return escenariosParaMostrar.map((item) => {
                   const esRecomendado =
