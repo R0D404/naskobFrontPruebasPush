@@ -1,7 +1,8 @@
 import { ParcelasApiPort } from '@/domain/ports/ParcelasApiPort';
 import { ParcelaResumen } from '@/domain/models/parcelaResumen';
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/v1').replace(/\/$/, '');
+const rawBase = (import.meta.env.VITE_API_BASE_URL || '/v1').trim().replace(/\/$/, '');
+const BASE_URL = rawBase.endsWith('/v1') ? rawBase : `${rawBase}/v1`;
 
 export class ApiParcelaAdapter implements ParcelasApiPort {
   async listarParcelas(token: string): Promise<ParcelaResumen[]> {
@@ -32,6 +33,10 @@ export class ApiParcelaAdapter implements ParcelasApiPort {
     if (!response.ok) {
       if (response.status === 401) {
         throw new Error('SESION_EXPIRADA');
+      }
+      if (response.status === 404) {
+        // La ruta /v1/parcelas aún no está implementada en esta rama del backend; retornar vacío
+        return [];
       }
       throw new Error('ERROR_CARGAR_PARCELAS');
     }

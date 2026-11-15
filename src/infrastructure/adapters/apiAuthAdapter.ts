@@ -1,8 +1,9 @@
 import { AuthPort } from '@/domain/ports/AuthPort';
 import { SesionUsuario, CredencialesLogin, RegistroCuenta } from '@/domain/models/auth';
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/v1').replace(/\/$/, '');
-const PWA_API_KEY = import.meta.env.VITE_PWA_API_KEY || 'aSqiDA7E0XyW8TSTVxvYaCo7OxvHbPR1qfEe9Qp4e2I';
+const rawBase = (import.meta.env.VITE_API_BASE_URL || '/v1').trim().replace(/\/$/, '');
+const BASE_URL = rawBase.endsWith('/v1') ? rawBase : `${rawBase}/v1`;
+const PWA_API_KEY = (import.meta.env.VITE_PWA_API_KEY || 'aSqiDA7E0XyW8TSTVxvYaCo7OxvHbPR1qfEe9Qp4e2I').trim();
 
 export class ApiAuthAdapter implements AuthPort {
   async iniciarSesion(credenciales: CredencialesLogin): Promise<SesionUsuario> {
