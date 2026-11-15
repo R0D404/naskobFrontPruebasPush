@@ -110,14 +110,18 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
           // 1. Mapa Vectorial Offline Estatal (chiapas.pmtiles: zoom 0 a 14)
           'chiapas-pmtiles': {
             type: 'vector',
-            url: 'pmtiles:///maps/chiapas.pmtiles',
+            url: typeof window !== 'undefined'
+              ? `pmtiles://${window.location.origin}/maps/chiapas.pmtiles`
+              : 'pmtiles:///maps/chiapas.pmtiles',
             minzoom: 0,
             maxzoom: 14,
           },
           // 2. Mapa Vectorial Offline Regional Alta Detalle (frailesca.pmtiles: zoom 0 a 15)
           'frailesca-pmtiles': {
             type: 'vector',
-            url: 'pmtiles:///maps/frailesca.pmtiles',
+            url: typeof window !== 'undefined'
+              ? `pmtiles://${window.location.origin}/maps/frailesca.pmtiles`
+              : 'pmtiles:///maps/frailesca.pmtiles',
             minzoom: 0,
             maxzoom: 15,
           },
@@ -416,7 +420,14 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
     });
     resizeObserver.observe(mapContainerRef.current);
 
-    // Evento de clic unificado: usa e.lngLat nativo de MapLibre (inmune al nivel de zoom y modo de mapa)
+    map.on('error', (e) => {
+      console.error('[MapLibre error]', e.error || e.message || e);
+    });
+
+    map.on('load', () => {
+      console.log('[MapLibre cargado con éxito]');
+    });
+
     map.on('click', (e: maplibregl.MapMouseEvent) => {
       if (caminandoActivoRef.current) return;
 

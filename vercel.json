@@ -1,7 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
+  "headers": [
+    {
+      "source": "/maps/(.*)",
+      "headers": [
+        { "key": "Accept-Ranges", "value": "bytes" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Headers", "value": "Range" }
+      ]
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/maps/(.*)",
+      "destination": "/maps/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

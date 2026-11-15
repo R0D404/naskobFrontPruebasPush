@@ -27,3 +27,4 @@ dist-ssr
 # TypeScript cache
 *.tsbuildinfo
 next-env.d.ts
+dev-dist
