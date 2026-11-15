@@ -10,12 +10,16 @@ import {
   AlertCircle,
   Layers,
   ChevronRight,
-  ShieldCheck,
   CheckCircle2,
+  Trash2,
 } from 'lucide-react';
 import { SesionUsuario } from '@/domain/models/auth';
 import { ParcelaResumen } from '@/domain/models/parcelaResumen';
 import { apiParcelaAdapter } from '@/infrastructure/adapters/apiParcelaAdapter';
+import {
+  obtenerParcelasLocales,
+  eliminarParcelaLocal,
+} from '@/utils/parcelasStorage';
 
 export interface DashboardParcelasViewProps {
   sesion: SesionUsuario;
@@ -50,30 +54,48 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
   }, []);
 
   const cargarParcelas = useCallback(async () => {
-    // Si el navegador reporta estar offline, no intentamos conectar
-    if (!navigator.onLine) {
-      setEstaEnLinea(false);
-      setParcelas([]);
+    setCargando(true);
+    setErrorCarga(null);
+
+    // 1. Cargar parcelas guardadas localmente en este dispositivo
+    const locales = obtenerParcelasLocales();
+    const resumenesLocales: ParcelaResumen[] = locales.map((loc) => ({
+      id_parcela: loc.id_parcela,
+      area_ha: loc.area_ha,
+      estado: loc.estado,
+      nombre: loc.nombre,
+      fecha_guardado: loc.fecha_guardado,
+      recomendacion_principal: loc.recomendacion_principal,
+      origen: 'local',
+    }));
+
+    // Si no hay conexión o es usuario demo/invitado, usamos directamente las locales
+    if (!navigator.onLine || sesion.token.startsWith('demo_')) {
+      setEstaEnLinea(navigator.onLine);
+      setParcelas(resumenesLocales);
       setCargando(false);
       return;
     }
 
-    setCargando(true);
-    setErrorCarga(null);
-
     try {
-      const datos = await apiParcelaAdapter.listarParcelas(sesion.token);
-      setParcelas(datos);
+      const nube = await apiParcelaAdapter.listarParcelas(sesion.token);
+      // Combinar con locales sin duplicar
+      const idsLocales = new Set(resumenesLocales.map((p) => p.id_parcela));
+      const nubeFiltradas: ParcelaResumen[] = nube
+        .filter((p) => !idsLocales.has(p.id_parcela))
+        .map((p) => ({ ...p, origen: 'nube' }));
+
+      setParcelas([...resumenesLocales, ...nubeFiltradas]);
       setEstaEnLinea(true);
     } catch (err: any) {
       if (err.message === 'OFFLINE_OR_UNREACHABLE') {
-        // La API no respondió o no hay internet real
         setEstaEnLinea(false);
-        setParcelas([]);
+        setParcelas(resumenesLocales);
       } else if (err.message === 'SESION_EXPIRADA') {
         alCerrarSesion();
       } else {
-        setErrorCarga('No se pudieron consultar las parcelas en el servidor.');
+        // En caso de error de red con la API, mantenemos las parcelas del dispositivo
+        setParcelas(resumenesLocales);
       }
     } finally {
       setCargando(false);
@@ -172,43 +194,63 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
         </div>
 
         {/* ======================================================== */}
-        {/* CONTENIDO CONDICIONAL: ONLINE vs OFFLINE                 */}
+        {/* LISTADO DE PARCELAS REGISTRADAS (LOCALES Y NUBE)         */}
         {/* ======================================================== */}
-        {estaEnLinea ? (
-          /* ====================================================== */
-          /* MODO ONLINE: MUESTRA LAS PARCELAS DE LA API            */
-          /* ====================================================== */
-          <div className="space-y-4">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-sm font-extrabold text-ink tracking-tight flex items-center gap-2">
-                <span>Parcelas sincronizadas en la nube</span>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-ink/5 text-ink">
-                  {parcelas.length}
-                </span>
-              </h3>
-            </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-extrabold text-ink tracking-tight flex items-center gap-2">
+              <span>Parcelas registradas</span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-ink/5 text-ink">
+                {parcelas.length}
+              </span>
+            </h3>
 
-            {cargando ? (
-              <div className="bg-white rounded-2xl border border-cream-line p-10 text-center space-y-3 shadow-sm">
-                <RefreshCw className="w-8 h-8 animate-spin text-maize-dark mx-auto" />
-                <p className="text-xs text-ink-muted font-medium">
-                  Cargando parcelas del productor...
-                </p>
+            {!estaEnLinea && (
+              <span className="text-[11px] font-bold text-terra bg-terra-bg px-2.5 py-0.5 rounded-full border border-terra/30 flex items-center gap-1">
+                <WifiOff className="w-3 h-3" /> Modo local
+              </span>
+            )}
+          </div>
+
+          {cargando ? (
+            <div className="bg-white rounded-2xl border border-cream-line p-10 text-center space-y-3 shadow-sm">
+              <RefreshCw className="w-8 h-8 animate-spin text-maize-dark mx-auto" />
+              <p className="text-xs text-ink-muted font-medium">
+                Cargando parcelas del productor...
+              </p>
+            </div>
+          ) : errorCarga && parcelas.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-terra/30 p-6 text-center space-y-3 shadow-sm">
+              <AlertCircle className="w-8 h-8 text-terra mx-auto" />
+              <p className="text-xs text-terra font-semibold">{errorCarga}</p>
+              <button
+                type="button"
+                onClick={cargarParcelas}
+                className="px-4 py-2 rounded-xl bg-ink text-white text-xs font-bold hover:bg-ink-light transition-all"
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : parcelas.length === 0 ? (
+            /* Sin parcelas aún */
+            !estaEnLinea ? (
+              <div className="bg-white rounded-2xl border border-terra/20 p-6 sm:p-8 text-center space-y-4 shadow-sm">
+                <div className="w-14 h-14 rounded-2xl bg-terra-bg flex items-center justify-center text-terra mx-auto">
+                  <WifiOff className="w-7 h-7 text-terra" />
+                </div>
+                <div className="space-y-1.5 max-w-md mx-auto">
+                  <h3 className="text-base font-extrabold text-ink">
+                    Modo Sin Conexión a Internet
+                  </h3>
+                  <p className="text-xs text-ink-muted leading-relaxed">
+                    Aún no tienes parcelas guardadas en este dispositivo.
+                  </p>
+                  <p className="text-xs text-ink font-semibold bg-cream/70 p-2.5 rounded-xl border border-cream-line mt-2">
+                    📍 Tu mapa vectorial de Chiapas está disponible localmente. Pulsa el botón de arriba <strong>«Agregar Parcela»</strong> para delimitar parcelas en el campo sin señal.
+                  </p>
+                </div>
               </div>
-            ) : errorCarga ? (
-              <div className="bg-white rounded-2xl border border-terra/30 p-6 text-center space-y-3 shadow-sm">
-                <AlertCircle className="w-8 h-8 text-terra mx-auto" />
-                <p className="text-xs text-terra font-semibold">{errorCarga}</p>
-                <button
-                  type="button"
-                  onClick={cargarParcelas}
-                  className="px-4 py-2 rounded-xl bg-ink text-white text-xs font-bold hover:bg-ink-light transition-all"
-                >
-                  Reintentar
-                </button>
-              </div>
-            ) : parcelas.length === 0 ? (
-              /* Sin parcelas aún */
+            ) : (
               <div className="bg-white rounded-2xl border border-dashed border-cream-line p-8 sm:p-12 text-center space-y-4 shadow-sm">
                 <div className="w-14 h-14 rounded-2xl bg-cream flex items-center justify-center text-ink-muted mx-auto">
                   <MapPin className="w-7 h-7 text-ink-muted" />
@@ -218,33 +260,40 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
                     Aún no tienes parcelas registradas
                   </h4>
                   <p className="text-xs text-ink-muted leading-relaxed">
-                    Presiona el botón de arriba <strong>«Agregar Parcela»</strong> para marcar tu terreno en el mapa de Chiapas y comenzar la evaluación de rotación de cultivos.
+                    Presiona el botón de arriba <strong>«Agregar Parcela»</strong> para marcar tu terreno en el mapa de Chiapas y evaluar la rotación resiliente.
                   </p>
                 </div>
               </div>
-            ) : (
-              /* Grid con las parcelas del productor */
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {parcelas.map((parcela, index) => (
-                  <div
-                    key={parcela.id_parcela || index}
-                    className="bg-white rounded-2xl border border-cream-line p-4 sm:p-5 shadow-sm hover:border-ink/30 transition-all flex flex-col justify-between space-y-4"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-ok-bg text-ok flex items-center justify-center font-bold text-xs shrink-0">
-                          <MapPin className="w-5 h-5 text-ok" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-ink">
-                            Parcela #{index + 1}
-                          </h4>
-                          <span className="text-[11px] text-ink-muted font-mono truncate block max-w-[170px]">
-                            {parcela.id_parcela}
-                          </span>
-                        </div>
+            )
+          ) : (
+            /* Grid con las parcelas del productor */
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {parcelas.map((parcela, index) => (
+                <div
+                  key={parcela.id_parcela || index}
+                  className="bg-white rounded-2xl border border-cream-line p-4 sm:p-5 shadow-sm hover:border-ink/30 transition-all flex flex-col justify-between space-y-4"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-ok-bg text-ok flex items-center justify-center font-bold text-xs shrink-0">
+                        <MapPin className="w-5 h-5 text-ok" />
                       </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-ink">
+                          {parcela.nombre || `Parcela #${index + 1}`}
+                        </h4>
+                        <span className="text-[11px] text-ink-muted font-mono truncate block max-w-[170px]">
+                          {parcela.id_parcela}
+                        </span>
+                        {parcela.recomendacion_principal && (
+                          <span className="text-[11px] font-bold text-ok block mt-0.5">
+                            🌱 Propuesta: {parcela.recomendacion_principal}
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
+                    <div className="flex flex-col items-end gap-1">
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                           parcela.estado === 'con_declaracion'
@@ -254,61 +303,53 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
                       >
                         {parcela.estado === 'con_declaracion' ? 'Evaluada' : 'Registrada'}
                       </span>
+                      {parcela.origen === 'local' && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-cream text-ink-muted border border-cream-line">
+                          📱 En dispositivo
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-cream-line/70 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[11px] text-ink-muted block">Superficie</span>
+                      <span className="font-extrabold text-ink text-sm">
+                        {parcela.area_ha.toFixed(2)} ha
+                      </span>
                     </div>
 
-                    <div className="pt-2 border-t border-cream-line/70 flex items-center justify-between text-xs">
-                      <div>
-                        <span className="text-[11px] text-ink-muted block">Superficie</span>
-                        <span className="font-extrabold text-ink text-sm">
-                          {parcela.area_ha.toFixed(2)} ha
-                        </span>
-                      </div>
+                    <div className="flex items-center gap-1.5">
+                      {parcela.origen === 'local' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            eliminarParcelaLocal(parcela.id_parcela);
+                            cargarParcelas();
+                          }}
+                          className="p-1.5 rounded-lg text-terra/60 hover:text-terra hover:bg-terra-bg/50 transition-all cursor-pointer"
+                          title="Eliminar parcela de este dispositivo"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
 
                       <button
                         type="button"
                         onClick={() => alSeleccionarParcela?.(parcela)}
-                        className="px-3 py-1.5 rounded-lg bg-ink/5 hover:bg-ink hover:text-white text-ink text-xs font-bold transition-all flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-lg bg-ink/5 hover:bg-ink hover:text-white text-ink text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                       >
                         <span>Ver detalle</span>
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          /* ====================================================== */
-          /* MODO OFFLINE: TAL COMO EN TU DIBUJO                    */
-          /* "No muestra las parcelas porque no se conecta con la API"*/
-          /* "Sí muestra el botón de agregar parcela"               */
-          /* ====================================================== */
-          <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-terra/20 p-6 sm:p-8 text-center space-y-4 shadow-sm">
-              <div className="w-14 h-14 rounded-2xl bg-terra-bg flex items-center justify-center text-terra mx-auto">
-                <WifiOff className="w-7 h-7 text-terra" />
-              </div>
-
-              <div className="space-y-1.5 max-w-md mx-auto">
-                <h3 className="text-base font-extrabold text-ink">
-                  Modo Sin Conexión a Internet
-                </h3>
-                <p className="text-xs text-ink-muted leading-relaxed">
-                  No se pueden cargar tus parcelas guardadas en la nube porque no hay comunicación con la API.
-                </p>
-                <p className="text-xs text-ink font-semibold bg-cream/70 p-2.5 rounded-xl border border-cream-line mt-2">
-                  📍 Tu mapa vectorial de Chiapas está disponible localmente. Puedes pulsar el botón de arriba <strong>«Agregar Parcela»</strong> para levantar y delimitar nuevas parcelas en el campo sin señal.
-                </p>
-              </div>
-
-              <div className="pt-2 flex items-center justify-center gap-2 text-[11px] text-ink-muted">
-                <ShieldCheck className="w-4 h-4 text-ok" />
-                <span>Las parcelas guardadas en la nube no se perderán.</span>
-              </div>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Garantías y Respaldo */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">

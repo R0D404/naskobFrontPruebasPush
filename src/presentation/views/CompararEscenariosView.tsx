@@ -7,6 +7,9 @@ import {
   Info,
   Satellite,
   Loader2,
+  Save,
+  Check,
+  Bookmark,
 } from 'lucide-react';
 import { DeclaracionCompleta } from '@/domain/models/declaracion';
 import { Parcela } from '@/domain/models/parcela';
@@ -17,6 +20,7 @@ import {
 import { evaluacionService } from '@/compositionRoot';
 import { ExportarReporteService } from '@/application/services/ExportarReporteService';
 import { TarjetaEscenarioDetalle } from '@/presentation/components/domain/TarjetaEscenarioDetalle';
+import { guardarParcelaLocal } from '@/utils/parcelasStorage';
 
 export type SubvistaComparador = 'lista' | 'detalle' | 'auditoria';
 
@@ -26,6 +30,7 @@ export interface CompararEscenariosViewProps {
   evaluacionInicial?: Evaluacion | null;
   alRegresarManejo: () => void;
   alReiniciarTodo: () => void;
+  alIrADashboard?: () => void;
 }
 
 export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
@@ -34,11 +39,20 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
   evaluacionInicial = null,
   alRegresarManejo,
   alReiniciarTodo,
+  alIrADashboard,
 }) => {
   const [evaluacion, setEvaluacion] = useState<Evaluacion | null>(evaluacionInicial);
   const [cargando, setCargando] = useState<boolean>(!evaluacionInicial);
   const [subvista, setSubvista] = useState<SubvistaComparador>('lista');
   const [codigoSeleccionado, setCodigoSeleccionado] = useState<string>('B');
+  const [guardadoExitoso, setGuardadoExitoso] = useState<boolean>(false);
+
+  const handleGuardarParcela = () => {
+    if (!parcela) return;
+    const mejorCultivo = evaluacion?.escenarios[0]?.nombre || 'Frijol';
+    guardarParcelaLocal(parcela, declaracion, mejorCultivo);
+    setGuardadoExitoso(true);
+  };
 
   // Carga reactiva de la evaluación mediante el servicio inyectado
   useEffect(() => {
@@ -260,6 +274,57 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
                 Esta herramienta apoya tu decisión; no sustituye la experiencia local ni a un técnico agrícola.
               </p>
             </div>
+
+            {/* Tarjeta y Botón Principal: Guardar Parcela en Mis Parcelas */}
+            {parcela && (
+              <div className="bg-white border-2 border-ok/30 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="space-y-0.5 text-center sm:text-left">
+                  <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-black text-ink">
+                    <Bookmark className="w-4 h-4 text-ok" />
+                    <span>Guardar Parcela</span>
+                  </div>
+                  <p className="text-[11px] text-ink-muted">
+                    Guarda el polígono de {parcela.area_ha.toFixed(2)} ha y las opciones recomendadas en tu panel.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={handleGuardarParcela}
+                    disabled={guardadoExitoso}
+                    className={`w-full sm:w-auto py-3 px-6 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer ${
+                      guardadoExitoso
+                        ? 'bg-ok text-white cursor-default'
+                        : 'bg-maize hover:bg-maize-light text-ink active:scale-98'
+                    }`}
+                  >
+                    {guardadoExitoso ? (
+                      <>
+                        <Check className="w-4 h-4 stroke-[3]" />
+                        <span>¡Parcela Guardada!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 text-ink" />
+                        <span>Guardar Parcela</span>
+                      </>
+                    )}
+                  </button>
+
+                  {guardadoExitoso && alIrADashboard && (
+                    <button
+                      type="button"
+                      onClick={alIrADashboard}
+                      className="w-full sm:w-auto py-3 px-4 rounded-xl text-xs font-black bg-ink text-white hover:bg-ink-light transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <span>Ir a Mis Parcelas</span>
+                      <span>→</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Botones de acción inferiores */}
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2.5">

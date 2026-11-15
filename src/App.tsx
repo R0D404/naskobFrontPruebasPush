@@ -11,6 +11,7 @@ import { Parcela } from '@/domain/models/parcela';
 import { SesionUsuario } from '@/domain/models/auth';
 import { ParcelaResumen } from '@/domain/models/parcelaResumen';
 import { obtenerSesion, guardarSesion, limpiarSesion } from '@/utils/sessionStorage';
+import { obtenerParcelasLocales } from '@/utils/parcelasStorage';
 import { apiAuthAdapter } from '@/infrastructure/adapters/apiAuthAdapter';
 import {
   DeclaracionCompleta,
@@ -76,6 +77,26 @@ export default function App() {
 
   // Seleccionar una parcela existente para consultar o re-evaluar
   const handleSeleccionarParcelaExistente = (resumen: ParcelaResumen) => {
+    // Buscar si existe guardada localmente con todos sus datos completos
+    const locales = obtenerParcelasLocales();
+    const guardada = locales.find((l) => l.id_parcela === resumen.id_parcela);
+
+    if (guardada) {
+      setParcelaActiva(guardada.parcela);
+      if (guardada.declaracion) {
+        setDeclaracion(guardada.declaracion);
+        setPasoActual(4); // Si ya tenía declaración, abre directo sus resultados
+      } else {
+        setDeclaracion((prev) => ({
+          ...prev,
+          id_parcela: guardada.id_parcela,
+        }));
+        setPasoActual(2);
+      }
+      setVistaActual('flujo_parcela');
+      return;
+    }
+
     const parcelaMock: Parcela = {
       id_parcela: resumen.id_parcela,
       area_ha: resumen.area_ha,
@@ -279,6 +300,7 @@ export default function App() {
             parcela={parcelaActiva}
             alRegresarManejo={() => setPasoActual(3)}
             alReiniciarTodo={handleReiniciarTodo}
+            alIrADashboard={() => setVistaActual('dashboard')}
           />
         )}
       </main>
