@@ -1114,13 +1114,13 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
 
       {/* Panel de Cálculo de Área, Determinación de Ubicación y Datos NASA Filtrados */}
       {analisisGeoespacial ? (
-        <div className="bg-white border-2 border-ink/20 rounded-naskob p-4 shadow-sm flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cream-line pb-3">
+        <div className="bg-white border-2 border-ink/20 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col gap-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-cream-line pb-3">
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
                 Superficie Calculada del Polígono (RF01)
               </span>
-              <div className="flex items-baseline gap-2 mt-0.5">
+              <div className="flex flex-wrap items-baseline gap-2 mt-0.5">
                 <span className="text-2xl font-extrabold text-ink">
                   {analisisGeoespacial.areaHectareas} ha
                 </span>
@@ -1134,26 +1134,26 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
             <div className="flex flex-wrap gap-2">
               {analisisGeoespacial.enRangoOptimo ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-ok-bg text-ok">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Rango óptimo (1 a 10 ha)
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>Rango óptimo (1 a 10 ha)</span>
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-warn-bg text-warn">
-                  <AlertTriangle className="w-4 h-4" />
-                  Fuera del rango 1–10 ha (Se permite continuar con aviso RF01)
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-warn-bg text-warn">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>Fuera de rango (1–10 ha) · Aviso RF01</span>
                 </span>
               )}
 
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-navy-bg text-navy">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Estado de Chiapas (Cobertura Estatal Offline)</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-navy-bg text-navy">
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <span>Chiapas (Cobertura Offline)</span>
               </span>
             </div>
           </div>
 
           {/* Datos de Ubicación y Filtrado Automático de la NASA */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div className="bg-cream rounded-lg p-3 border border-cream-line">
+            <div className="bg-cream rounded-xl p-3 border border-cream-line">
               <p className="font-bold text-ink uppercase tracking-wider mb-1.5">
                 Ubicación Determinada (Filtro NASA)
               </p>
@@ -1178,7 +1178,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
               </ul>
             </div>
 
-            <div className="bg-cream rounded-lg p-3 border border-cream-line">
+            <div className="bg-cream rounded-xl p-3 border border-cream-line">
               <p className="font-bold text-ink uppercase tracking-wider mb-1.5">
                 Datos NASA Filtrados para esta Ubicación
               </p>
@@ -1210,20 +1210,21 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-3 pt-1">
-            <div className="flex items-center gap-1.5 text-xs text-ink-muted">
-              <ShieldCheck className="w-4 h-4 text-ok shrink-0" />
-              <span>
-                Privacidad RNF01: Las coordenadas exactas del polígono se usan para filtrar la celda climática y se cifran sin exponerse públicamente.
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-cream-line">
+            <div className="flex items-start sm:items-center gap-1.5 text-xs text-ink-muted">
+              <ShieldCheck className="w-4 h-4 text-ok shrink-0 mt-0.5 sm:mt-0" />
+              <span className="leading-tight">
+                Privacidad RNF01: Las coordenadas exactas se usan para filtrar la celda climática y se cifran sin exponerse públicamente.
               </span>
             </div>
 
             <button
               type="button"
               onClick={handleConfirmar}
-              className="px-5 py-2.5 rounded-lg text-xs font-extrabold bg-ink text-white hover:bg-ink-light transition shrink-0 shadow-sm"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs sm:text-sm font-extrabold bg-ink text-white hover:bg-ink-light active:scale-[0.98] transition-all shadow-md shrink-0 flex items-center justify-center gap-2"
             >
-              Confirmar Parcela y Filtrar Datos NASA
+              <span>Confirmar Parcela y Filtrar Datos NASA</span>
+              <span className="text-maize font-bold">→</span>
             </button>
           </div>
         </div>
