@@ -29,7 +29,7 @@ export const ParcelaView: React.FC<ParcelaViewProps> = ({
       area_ha: resultado.areaHectareas,
       estado_region: resultado.estadoRegion,
       metodo_delimitacion: metodo,
-      region: 'frailesca',
+      region: 'chiapas',
       fecha_creacion: new Date().toISOString(),
       poligono: {
         type: 'Polygon',

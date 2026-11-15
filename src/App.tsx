@@ -24,13 +24,6 @@ import {
 export type PasoFlujo = 1 | 2 | 3 | 4;
 export type VistaApp = 'dashboard' | 'flujo_parcela';
 
-const NOMBRES_PASOS: Record<PasoFlujo, { etiqueta: string; subtitulo: string }> = {
-  1: { etiqueta: '01', subtitulo: 'Delimitar Parcela' },
-  2: { etiqueta: '02', subtitulo: 'Historial de Siembra y Suelo' },
-  3: { etiqueta: '03', subtitulo: 'Manejo y Prioridades' },
-  4: { etiqueta: '04', subtitulo: 'Comparar Escenarios' },
-};
-
 export default function App() {
   // Estado de Sesión (Persistido en localStorage para funcionar offline)
   const [sesion, setSesion] = useState<SesionUsuario | null>(() => obtenerSesion());
@@ -198,18 +191,8 @@ export default function App() {
           <div className="w-8 h-8 rounded-xl bg-ink text-white flex items-center justify-center shadow-sm shrink-0">
             <Sprout className="w-4 h-4 text-maize" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-base sm:text-lg tracking-tight text-ink">NasKob</span>
-              {pasoActual !== 4 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-ink/10 text-ink rounded-full">
-                  {NOMBRES_PASOS[pasoActual].etiqueta}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-ink-muted leading-none hidden sm:block">
-              {NOMBRES_PASOS[pasoActual].subtitulo} · Estado de Chiapas
-            </p>
+          <div className="flex items-center gap-2">
+            <span className="font-extrabold text-base sm:text-lg tracking-tight text-ink">NasKob</span>
           </div>
         </div>
 
@@ -226,7 +209,7 @@ export default function App() {
                 type="button"
                 disabled={!puedeNavegar && !esActivo}
                 onClick={() => puedeNavegar && setPasoActual(paso)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${
                   esActivo
                     ? 'bg-ink text-white shadow-sm'
                     : esCompletado
@@ -234,10 +217,8 @@ export default function App() {
                     : 'text-ink-muted opacity-50 cursor-not-allowed'
                 }`}
               >
-                {esCompletado ? (
+                {esCompletado && (
                   <Check className="w-3 h-3 stroke-[3]" />
-                ) : (
-                  <span>{paso}</span>
                 )}
                 <span>
                   {paso === 1

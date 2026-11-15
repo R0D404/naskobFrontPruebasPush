@@ -5,7 +5,6 @@ export const CULTIVOS_CATALOGO = [
   'Calabaza',
   'Sandía',
   'Chile habanero',
-  'Otro',
   'No sé',
   'No hubo siembra',
 ] as const;

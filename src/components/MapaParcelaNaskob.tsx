@@ -807,32 +807,6 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
     );
   };
 
-  // Cargar parcela demostrativa en Villaflores (La Frailesca) para pruebas instantáneas en escritorio
-  const cargarParcelaDemoFrailesca = () => {
-    const puntosDemo: [number, number][] = [
-      [-93.26985, 16.23485],
-      [-93.26795, 16.23485],
-      [-93.26795, 16.23315],
-      [-93.26985, 16.23315],
-    ];
-    setVertices(puntosDemo);
-    setUbicacionUsuario({
-      lng: -93.2689,
-      lat: 16.234,
-      precision: 4,
-    });
-    setAlertaGps(null);
-    setEstadoGpsTexto('Parcela piloto en Villaflores, La Frailesca cargada (3.82 ha).');
-
-    if (mapRef.current) {
-      mapRef.current.flyTo({
-        center: [-93.2689, 16.234],
-        zoom: 16.8,
-        essential: true,
-      });
-    }
-  };
-
   // ---------------------------------------------------------------------------
   // 8. CÁLCULO GEODÉSICO DE ÁREA, PERÍMETRO, CENTROIDE Y FILTRADO DE DATOS NASA
   // ---------------------------------------------------------------------------
@@ -976,16 +950,6 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
           >
             <Navigation className="w-4 h-4" />
             <span>{cargandoGps ? 'Localizando GPS...' : 'Mi ubicación GPS'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={cargarParcelaDemoFrailesca}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-maize/25 text-maize-dark hover:bg-maize/40 transition"
-            title="Centra en Villaflores y traza una parcela piloto de 3.82 ha"
-          >
-            <MapPin className="w-4 h-4" />
-            <span>Cargar Parcela Piloto (Frailesca)</span>
           </button>
         </div>
       </div>
@@ -1211,17 +1175,9 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
                 </span>
               )}
 
-              <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
-                  analisisGeoespacial.estadoRegion === 'preparada'
-                    ? 'bg-navy-bg text-navy'
-                    : 'bg-warn-bg text-warn'
-                }`}
-              >
-                <WifiOff className="w-3.5 h-3.5" />
-                {analisisGeoespacial.estadoRegion === 'preparada'
-                  ? 'Región Frailesca (Preparada Offline)'
-                  : 'Fuera de Frailesca (Cobertura Estatal Chiapas)'}
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-navy-bg text-navy">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Estado de Chiapas (Cobertura Estatal Offline)</span>
               </span>
             </div>
           </div>
