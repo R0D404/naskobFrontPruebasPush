@@ -1,25 +1,15 @@
 import { Source } from 'pmtiles';
 
 export const MAP_CONFIGS = {
-  frailesca: {
-    key: 'frailesca',
-    protocolUrl: 'pmtiles://frailesca',
-    downloadUrl: '/maps/frailesca.pmtiles',
-    name: 'La Frailesca (Recomendado)',
-    description: 'Villaflores, Villa Corzo, La Concordia y alrededores (Zoom 0-15)',
-    sizeBytes: 4763166,
-    sizeLabel: '4.7 MB',
-    required: true,
-  },
   chiapas: {
     key: 'chiapas',
     protocolUrl: 'pmtiles://chiapas',
     downloadUrl: '/maps/chiapas.pmtiles',
     name: 'Estado de Chiapas Completo',
-    description: 'Todo el estado de Chiapas a escala general (Zoom 0-14)',
+    description: 'Todo el estado de Chiapas (Tuxtla, Altos, Costa, Soconusco, Selva, Frontera y Valles)',
     sizeBytes: 56352292,
     sizeLabel: '54 MB',
-    required: false,
+    required: true,
   },
 } as const;
 

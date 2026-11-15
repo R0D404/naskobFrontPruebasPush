@@ -100,7 +100,7 @@ export default function App() {
               )}
             </div>
             <p className="text-[11px] text-ink-muted leading-none hidden sm:block">
-              {NOMBRES_PASOS[pasoActual].subtitulo} · La Frailesca
+              {NOMBRES_PASOS[pasoActual].subtitulo} · Estado de Chiapas
             </p>
           </div>
         </div>

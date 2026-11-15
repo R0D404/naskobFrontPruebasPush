@@ -24,7 +24,6 @@ interface Props {
 }
 
 export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
-  const [frailescaListo, setFrailescaListo] = useState<boolean>(false);
   const [chiapasListo, setChiapasListo] = useState<boolean>(false);
   const [descargando, setDescargando] = useState<MapKey | null>(null);
   const [progresoDescarga, setProgresoDescarga] = useState<{
@@ -52,25 +51,16 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
     };
   }, []);
 
-  // Verificar mapas existentes al inicio y auto-descargar Frailesca y Chiapas si es necesario
+  // Verificar mapas existentes al inicio y auto-descargar Chiapas Completo si es necesario
   useEffect(() => {
     let activo = true;
 
     async function verificarYInicializar() {
       try {
-        const tieneFrailesca = await isMapStored('frailesca');
         const tieneChiapas = await isMapStored('chiapas');
 
         if (!activo) return;
-        setFrailescaListo(tieneFrailesca);
         setChiapasListo(tieneChiapas);
-
-        if (tieneFrailesca) {
-          const blob = await getStoredMapBlob('frailesca');
-          if (blob && activo) {
-            onMapLoaded('frailesca', blob);
-          }
-        }
 
         if (tieneChiapas) {
           const blob = await getStoredMapBlob('chiapas');
@@ -79,15 +69,9 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
           }
         }
 
-        // 1. PRIORIDAD TOTAL: Si Chiapas completo no está guardado y hay internet, descargarlo primero
+        // Si Chiapas completo no está guardado y hay internet, auto-descargarlo para cobertura estatal total
         if (!tieneChiapas && navigator.onLine && activo) {
           await descargarMapaDirecto('chiapas');
-        }
-
-        // 2. Si Frailesca regional de alta resolución no está guardado, descargarlo
-        const tieneFrailescaActualizado = await isMapStored('frailesca');
-        if (!tieneFrailescaActualizado && navigator.onLine && activo) {
-          await descargarMapaDirecto('frailesca');
         }
       } catch (err) {
         console.warn('[GestorMapaOffline] Error al verificar mapas:', err);
@@ -115,7 +99,6 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
         });
       });
 
-      if (key === 'frailesca') setFrailescaListo(true);
       if (key === 'chiapas') setChiapasListo(true);
 
       onMapLoaded(key, blob);
@@ -136,7 +119,6 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
   const ejecutarEliminar = async (key: MapKey) => {
     try {
       await deleteStoredMap(key);
-      if (key === 'frailesca') setFrailescaListo(false);
       if (key === 'chiapas') setChiapasListo(false);
     } catch (err) {
       console.warn('[GestorMapaOffline] Error eliminando mapa:', err);
@@ -151,7 +133,7 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
           {chiapasListo ? (
             <div className="flex items-center gap-1.5 text-ok font-bold">
               <CheckCircle2 className="w-4 h-4 text-ok shrink-0" />
-              <span>Todo Chiapas Offline: Listo (54 MB en dispositivo · Estado completo)</span>
+              <span>Todo Chiapas Offline: Guardado (54 MB en dispositivo · Cobertura estatal completa)</span>
             </div>
           ) : descargando === 'chiapas' ? (
             <div className="flex items-center gap-1.5 text-navy font-bold">
@@ -161,26 +143,13 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
                 {progresoDescarga?.totalMb})
               </span>
             </div>
-          ) : frailescaListo ? (
-            <div className="flex items-center gap-1.5 text-amber-800 font-bold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>La Frailesca lista (4.7 MB) · Chiapas completo pendiente</span>
-            </div>
-          ) : descargando === 'frailesca' ? (
-            <div className="flex items-center gap-1.5 text-navy font-bold">
-              <Loader2 className="w-4 h-4 animate-spin text-navy shrink-0" />
-              <span>
-                Guardando mapa regional La Frailesca ({progresoDescarga?.percent || 0}% · {progresoDescarga?.loadedMb} MB /{' '}
-                {progresoDescarga?.totalMb})
-              </span>
-            </div>
           ) : (
             <div className="flex items-center gap-1.5 text-amber-700 font-bold">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
                 {online
-                  ? 'Mapas offline no guardados todavía'
-                  : 'Sin conexión · Requiere internet una vez para guardar los mapas'}
+                  ? 'Mapa de Chiapas no guardado todavía'
+                  : 'Sin conexión · Requiere internet una vez para guardar el mapa estatal'}
               </span>
             </div>
           )}
@@ -244,123 +213,57 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
       {expandido && (
         <div className="p-3 border-t border-cream-line space-y-3 bg-white">
           <p className="text-ink-muted text-[11px] leading-relaxed">
-            NasKob almacena mapas vectoriales locales en la memoria del navegador de tu teléfono. Así puedes
-            delimitar parcelas, caminar linderos y orientarte en el campo agrícola aunque no tengas señal celular ni datos.
+            NasKob almacena el mapa vectorial de todo el estado de Chiapas en la memoria local de tu dispositivo.
+            Podrás delimitar parcelas, caminar linderos y orientarte en el campo agrícola aunque no tengas señal celular ni datos.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {/* Tarjeta La Frailesca */}
-            <div
-              className={`p-2.5 rounded-lg border ${
-                frailescaListo
-                  ? 'border-emerald-200 bg-emerald-50/40'
-                  : 'border-cream-line bg-cream/30'
-              } flex flex-col justify-between gap-2`}
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-ink text-xs">
-                    {MAP_CONFIGS.frailesca.name}
-                  </span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white border border-cream-line text-ink-muted">
-                    {MAP_CONFIGS.frailesca.sizeLabel}
-                  </span>
-                </div>
-                <p className="text-[10px] text-ink-muted mt-0.5">
-                  {MAP_CONFIGS.frailesca.description}
-                </p>
+          <div className="p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-ink text-xs">
+                  {MAP_CONFIGS.chiapas.name}
+                </span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white border border-cream-line text-ink-muted">
+                  {MAP_CONFIGS.chiapas.sizeLabel}
+                </span>
               </div>
-
-              <div className="flex items-center justify-between pt-1">
-                {frailescaListo ? (
-                  <>
-                    <span className="text-emerald-700 font-bold text-[11px] flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Instalado en móvil
-                    </span>
-                    <button
-                      onClick={() => ejecutarEliminar('frailesca')}
-                      disabled={descargando !== null}
-                      className="text-rose-600 hover:text-rose-800 p-1 text-[11px] flex items-center gap-0.5"
-                      title="Eliminar de la memoria"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Borrar
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => ejecutarDescarga('frailesca')}
-                    disabled={descargando !== null || !online}
-                    className="w-full py-1.5 px-2 rounded bg-ok text-white font-bold hover:bg-ok-light disabled:opacity-50 flex items-center justify-center gap-1 text-[11px] transition-colors"
-                  >
-                    {descargando === 'frailesca' ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Guardando...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-3.5 h-3.5" /> Descargar {MAP_CONFIGS.frailesca.sizeLabel}
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
+              <p className="text-[10px] text-ink-muted mt-0.5">
+                {MAP_CONFIGS.chiapas.description}
+              </p>
             </div>
 
-            {/* Tarjeta Chiapas Completo */}
-            <div
-              className={`p-2.5 rounded-lg border ${
-                chiapasListo
-                  ? 'border-emerald-200 bg-emerald-50/40'
-                  : 'border-cream-line bg-cream/30'
-              } flex flex-col justify-between gap-2`}
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-ink text-xs">
-                    {MAP_CONFIGS.chiapas.name}
+            <div className="flex items-center gap-2 pt-1 sm:pt-0">
+              {chiapasListo ? (
+                <>
+                  <span className="text-emerald-700 font-bold text-[11px] flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Instalado en móvil
                   </span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white border border-cream-line text-ink-muted">
-                    {MAP_CONFIGS.chiapas.sizeLabel}
-                  </span>
-                </div>
-                <p className="text-[10px] text-ink-muted mt-0.5">
-                  {MAP_CONFIGS.chiapas.description}
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                {chiapasListo ? (
-                  <>
-                    <span className="text-emerald-700 font-bold text-[11px] flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Instalado en móvil
-                    </span>
-                    <button
-                      onClick={() => ejecutarEliminar('chiapas')}
-                      disabled={descargando !== null}
-                      className="text-rose-600 hover:text-rose-800 p-1 text-[11px] flex items-center gap-0.5"
-                      title="Eliminar de la memoria"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Borrar
-                    </button>
-                  </>
-                ) : (
                   <button
-                    onClick={() => ejecutarDescarga('chiapas')}
-                    disabled={descargando !== null || !online}
-                    className="w-full py-1.5 px-2 rounded bg-ink text-white font-bold hover:bg-ink-light disabled:opacity-50 flex items-center justify-center gap-1 text-[11px] transition-colors"
+                    onClick={() => ejecutarEliminar('chiapas')}
+                    disabled={descargando !== null}
+                    className="text-rose-600 hover:text-rose-800 p-1 text-[11px] flex items-center gap-0.5"
+                    title="Eliminar de la memoria"
                   >
-                    {descargando === 'chiapas' ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Guardando...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-3.5 h-3.5" /> Descargar {MAP_CONFIGS.chiapas.sizeLabel} (Opcional)
-                      </>
-                    )}
+                    <Trash2 className="w-3.5 h-3.5" /> Borrar
                   </button>
-                )}
-              </div>
+                </>
+              ) : (
+                <button
+                  onClick={() => ejecutarDescarga('chiapas')}
+                  disabled={descargando !== null || !online}
+                  className="w-full sm:w-auto py-1.5 px-3 rounded bg-ink text-white font-bold hover:bg-ink-light disabled:opacity-50 flex items-center justify-center gap-1 text-[11px] transition-colors"
+                >
+                  {descargando === 'chiapas' ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5" /> Descargar {MAP_CONFIGS.chiapas.sizeLabel}
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
