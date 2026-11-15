@@ -1,3 +1,5 @@
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,4 +13,13 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+}
+
+/* Garantiza que el lienzo de MapLibre GL no sufra distorsión por reglas globales de Tailwind */
+.maplibregl-map {
+  font-family: inherit;
+}
+
+.maplibregl-canvas {
+  outline: none;
 }

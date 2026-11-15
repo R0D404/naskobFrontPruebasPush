@@ -5,11 +5,18 @@ import path from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    host: true,
+    allowedHosts: true,
+  },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'maps/*'],
+      devOptions: {
+        enabled: true
+      },
+      includeAssets: ['favicon.ico', 'favicon.svg', 'robots.txt', 'maps/*', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
         name: 'NasKob · Rotación Resiliente',
         short_name: 'NasKob',
@@ -18,6 +25,7 @@ export default defineConfig({
         background_color: '#f3f6f4',
         display: 'standalone',
         orientation: 'portrait',
+        start_url: '/',
         icons: [
           {
             src: '/pwa-192x192.png',
