@@ -167,7 +167,7 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
             className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-maize hover:bg-maize-light active:scale-[0.98] text-ink font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 shrink-0 group"
           >
             <Plus className="w-5 h-5 stroke-[2.5] text-ink group-hover:rotate-90 transition-transform duration-200" />
-            <span>+ Agregar Parcela</span>
+            <span>Agregar Parcela</span>
           </button>
         </div>
 
@@ -218,7 +218,7 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
                     Aún no tienes parcelas registradas
                   </h4>
                   <p className="text-xs text-ink-muted leading-relaxed">
-                    Presiona el botón de arriba <strong>«+ Agregar Parcela»</strong> para marcar tu terreno en el mapa de Chiapas y comenzar la evaluación de rotación de cultivos.
+                    Presiona el botón de arriba <strong>«Agregar Parcela»</strong> para marcar tu terreno en el mapa de Chiapas y comenzar la evaluación de rotación de cultivos.
                   </p>
                 </div>
               </div>
@@ -298,7 +298,7 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
                   No se pueden cargar tus parcelas guardadas en la nube porque no hay comunicación con la API.
                 </p>
                 <p className="text-xs text-ink font-semibold bg-cream/70 p-2.5 rounded-xl border border-cream-line mt-2">
-                  📍 Tu mapa vectorial de Chiapas está disponible localmente. Puedes pulsar el botón de arriba <strong>«+ Agregar Parcela»</strong> para levantar y delimitar nuevas parcelas en el campo sin señal.
+                  📍 Tu mapa vectorial de Chiapas está disponible localmente. Puedes pulsar el botón de arriba <strong>«Agregar Parcela»</strong> para levantar y delimitar nuevas parcelas en el campo sin señal.
                 </p>
               </div>
 
