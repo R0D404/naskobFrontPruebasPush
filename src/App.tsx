@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sprout, MapPin, Check, ChevronLeft } from 'lucide-react';
+import { MapPin, Check, ChevronLeft } from 'lucide-react';
 import { BotonInstalarPWA } from './components/BotonInstalarPWA';
 import { LoginAuthView } from '@/presentation/views/LoginAuthView';
 import { DashboardParcelasView } from '@/presentation/views/DashboardParcelasView';
@@ -318,8 +318,8 @@ export default function App() {
             <span className="hidden sm:inline">Mis Parcelas</span>
           </button>
 
-          <div className="w-8 h-8 rounded-xl bg-ink text-white flex items-center justify-center shadow-sm shrink-0">
-            <Sprout className="w-4 h-4 text-maize" />
+          <div className="w-8 h-8 rounded-xl bg-white border border-cream-line flex items-center justify-center shadow-xs shrink-0 overflow-hidden p-0.5">
+            <img src="/logo-naskob-symbol.png" alt="NasKob" className="w-full h-full object-contain" />
           </div>
           <div className="flex items-center gap-2">
             <span className="font-extrabold text-base sm:text-lg tracking-tight text-ink">NasKob</span>

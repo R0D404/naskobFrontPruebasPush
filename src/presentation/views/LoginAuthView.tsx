@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Sprout,
   Mail,
   Lock,
   Eye,
@@ -9,7 +8,6 @@ import {
   Sparkles,
   ArrowRight,
   AlertCircle,
-  Satellite,
   RefreshCw,
   ChevronLeft,
 } from 'lucide-react';
@@ -145,20 +143,18 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar, alVo
         <div className="bg-white rounded-2xl border border-cream-line shadow-sm p-6 sm:p-8 space-y-6">
           {/* Encabezado con Icono y Títulos */}
           <div className="text-center space-y-3">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-ink text-white shadow-md mx-auto relative">
-              <Sprout className="w-8 h-8 text-maize" />
-              <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-maize flex items-center justify-center border-2 border-white shadow-sm">
-                <Satellite className="w-3 h-3 text-ink" />
-              </div>
+            <div className="flex justify-center">
+              <img
+                src="/logo-naskob.png"
+                alt="NasKob"
+                className="h-28 sm:h-32 w-auto object-contain mx-auto"
+              />
             </div>
 
             <div className="space-y-1">
               <span className="inline-block text-[10px] font-bold tracking-widest text-ink uppercase bg-ink/5 px-2.5 py-0.5 rounded-full">
                 Estado de Chiapas
               </span>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight">
-                NasKob
-              </h1>
               <p className="text-xs sm:text-sm text-ink-muted leading-relaxed max-w-sm mx-auto">
                 Decisión agronómica y resiliencia climática con datos satelitales de la NASA para productores de Chiapas.
               </p>

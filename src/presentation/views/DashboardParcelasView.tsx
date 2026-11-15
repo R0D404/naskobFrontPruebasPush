@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Sprout,
   MapPin,
   Plus,
   Wifi,
@@ -160,8 +159,8 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
         {/* Barra Superior de Estado y Perfil */}
         <div className="bg-white rounded-2xl border border-cream-line p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-ink text-white flex items-center justify-center shadow-sm shrink-0">
-              <Sprout className="w-6 h-6 text-maize" />
+            <div className="w-12 h-12 rounded-2xl bg-white border border-cream-line flex items-center justify-center shadow-xs shrink-0 overflow-hidden p-1">
+              <img src="/logo-naskob-symbol.png" alt="NasKob" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-2">
