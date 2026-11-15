@@ -8,6 +8,13 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: true,
+    watch: {
+      ignored: ['**/google-cloud-sdk/**', '**/node_modules/**', '**/.git/**']
+    }
+  },
+  preview: {
+    host: true,
+    allowedHosts: true,
   },
   plugins: [
     react(),

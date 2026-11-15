@@ -469,7 +469,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
       'bottom-left'
     );
 
-    map.on('error', (e) => {
+    map.on('error', (e: any) => {
       console.warn('[MapLibre]', e.error || e.message || e);
     });
 
