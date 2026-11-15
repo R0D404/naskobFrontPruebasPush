@@ -386,11 +386,6 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
           </div>
         </div>
       </div>
-
-      {/* Pie de página sutil */}
-      <footer className="text-center text-[11px] text-ink-muted/80 mt-6 shrink-0">
-        NasKob · Plataforma Agronómica Resiliente · Datos Satelitales NASA POWER y Levantamiento en Campo
-      </footer>
     </div>
   );
 };

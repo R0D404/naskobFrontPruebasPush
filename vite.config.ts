@@ -28,7 +28,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'favicon.svg', 'robots.txt', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
-        name: 'NasKob · Rotación Resiliente',
+        name: 'NasKob',
         short_name: 'NasKob',
         description: 'Apoyo a la decisión de rotación de cultivos para pequeños productores en Chiapas con datos de la NASA',
         theme_color: '#14302b',
