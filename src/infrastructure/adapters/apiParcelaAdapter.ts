@@ -43,9 +43,11 @@ export class ApiParcelaAdapter implements ParcelasApiPort {
       coordinatesValidas.push([...coordinatesValidas[0]]);
     }
 
-    // ParcelaCreateDTO en backend tiene extra="forbid", por lo que solo admite 'modo' y 'geometria'
+    // ParcelaCreateDTO en backend admite 'modo', 'nombre', 'area_ha' y 'geometria'
     const payload = {
       modo: 'poligono',
+      nombre: parcela.nombre || 'Parcela Chiapas',
+      area_ha: parcela.area_ha,
       geometria: {
         type: 'Polygon',
         coordinates: [coordinatesValidas],

@@ -22,7 +22,9 @@ import {
 import { evaluacionService } from '@/compositionRoot';
 import { ExportarReporteService } from '@/application/services/ExportarReporteService';
 import { TarjetaEscenarioDetalle } from '@/presentation/components/domain/TarjetaEscenarioDetalle';
-import { guardarParcelaLocal } from '@/utils/parcelasStorage';
+import { guardarParcelaLocal, marcarParcelaComoSincronizada } from '@/utils/parcelasStorage';
+import { apiParcelaAdapter } from '@/infrastructure/adapters/apiParcelaAdapter';
+import { obtenerSesion } from '@/utils/sessionStorage';
 
 export type SubvistaComparador = 'lista' | 'detalle';
 
@@ -48,14 +50,45 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
   const [subvista, setSubvista] = useState<SubvistaComparador>('lista');
   const [codigoSeleccionado, setCodigoSeleccionado] = useState<string>('B');
   const [guardadoExitoso, setGuardadoExitoso] = useState<boolean>(false);
+  const [guardandoEnNube, setGuardandoEnNube] = useState<boolean>(false);
   const [errorRed, setErrorRed] = useState<boolean>(false);
   const [reintentando, setReintentando] = useState<boolean>(false);
 
-  const handleGuardarParcela = () => {
+  const handleGuardarParcela = async () => {
     if (!parcela) return;
+    setGuardandoEnNube(true);
     const mejorCultivo = evaluacion?.escenarios[0]?.nombre || 'Frijol';
+
+    // 1. Guardar localmente para respaldo y modo offline
     guardarParcelaLocal(parcela, declaracion, mejorCultivo);
     setGuardadoExitoso(true);
+
+    // 2. Si hay sesión activa e internet, persistir en la Base de Datos de la API
+    const sesion = obtenerSesion();
+    if (sesion?.token && !sesion.esInvitado && navigator.onLine) {
+      try {
+        let idRemoto = parcela.id_parcela;
+        const esLocal = !idRemoto || idRemoto.startsWith('parc_') || idRemoto === 'parcela_activa';
+
+        if (esLocal) {
+          const res = await apiParcelaAdapter.crearParcela(parcela, sesion.token);
+          if (res?.id_parcela) {
+            idRemoto = res.id_parcela;
+            marcarParcelaComoSincronizada(parcela.id_parcela, idRemoto);
+          }
+        }
+
+        // Si tenemos el ID en BD, guardar también la declaración
+        if (idRemoto && !idRemoto.startsWith('parc_')) {
+          await apiParcelaAdapter.guardarDeclaracion(idRemoto, declaracion, sesion.token);
+          marcarParcelaComoSincronizada(parcela.id_parcela, idRemoto);
+        }
+      } catch (err) {
+        console.warn('[CompararEscenariosView] Guardado en BD falló (se mantendrá local):', err);
+      }
+    }
+
+    setGuardandoEnNube(false);
   };
 
   const ejecutarCargaEvaluacion = useCallback(async () => {
@@ -399,14 +432,19 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
                   <button
                     type="button"
                     onClick={handleGuardarParcela}
-                    disabled={guardadoExitoso}
+                    disabled={guardadoExitoso || guardandoEnNube}
                     className={`w-full sm:w-auto py-3 px-6 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer ${
                       guardadoExitoso
                         ? 'bg-ok text-white cursor-default'
                         : 'bg-maize hover:bg-maize-light text-ink active:scale-98'
                     }`}
                   >
-                    {guardadoExitoso ? (
+                    {guardandoEnNube ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-ink" />
+                        <span>Guardando en la nube...</span>
+                      </>
+                    ) : guardadoExitoso ? (
                       <>
                         <Check className="w-4 h-4 stroke-[3]" />
                         <span>¡Parcela Guardada!</span>

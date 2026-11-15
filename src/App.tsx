@@ -11,9 +11,10 @@ import { Parcela } from '@/domain/models/parcela';
 import { SesionUsuario } from '@/domain/models/auth';
 import { ParcelaResumen } from '@/domain/models/parcelaResumen';
 import { obtenerSesion, guardarSesion, limpiarSesion } from '@/utils/sessionStorage';
-import { obtenerParcelasLocales } from '@/utils/parcelasStorage';
+import { obtenerParcelasLocales, guardarParcelaLocal } from '@/utils/parcelasStorage';
 import { sincronizarParcelasPendientes } from '@/utils/sincronizadorParcelas';
 import { apiAuthAdapter } from '@/infrastructure/adapters/apiAuthAdapter';
+import { apiParcelaAdapter } from '@/infrastructure/adapters/apiParcelaAdapter';
 import {
   DeclaracionCompleta,
   MANEJO_PREDETERMINADO,
@@ -96,10 +97,12 @@ export default function App() {
   };
 
   // Seleccionar una parcela existente para consultar o re-evaluar
-  const handleSeleccionarParcelaExistente = (resumen: ParcelaResumen) => {
+  const handleSeleccionarParcelaExistente = async (resumen: ParcelaResumen) => {
     // Buscar si existe guardada localmente con todos sus datos completos
     const locales = obtenerParcelasLocales();
-    const guardada = locales.find((l) => l.id_parcela === resumen.id_parcela);
+    const guardada = locales.find(
+      (l) => l.id_parcela === resumen.id_parcela || l.id_remoto === resumen.id_parcela
+    );
 
     if (guardada) {
       setParcelaActiva(guardada.parcela);
@@ -109,7 +112,7 @@ export default function App() {
       } else {
         setDeclaracion((prev) => ({
           ...prev,
-          id_parcela: guardada.id_parcela,
+          id_parcela: guardada.id_remoto || guardada.id_parcela,
         }));
         setPasoActual(2);
       }
@@ -117,43 +120,109 @@ export default function App() {
       return;
     }
 
-    const parcelaMock: Parcela = {
-      id_parcela: resumen.id_parcela,
-      area_ha: resumen.area_ha,
-      poligono: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [-93.2, 16.2],
-            [-93.2, 16.21],
-            [-93.19, 16.21],
-            [-93.19, 16.2],
-            [-93.2, 16.2],
-          ],
-        ],
-      },
-      metodo_delimitacion: 'dibujo',
-      region: 'chiapas',
-      estado_region: 'preparada',
-      fecha_creacion: new Date().toISOString(),
-    };
-    setParcelaActiva(parcelaMock);
-    setDeclaracion((prev) => ({
-      ...prev,
-      id_parcela: resumen.id_parcela,
-    }));
-    setPasoActual(2);
-    setVistaActual('flujo_parcela');
+    // Si viene de la nube (otro dispositivo), descargar de la API
+    if (sesion?.token && !sesion.esInvitado && navigator.onLine) {
+      try {
+        const detalle = await apiParcelaAdapter.obtenerParcela(resumen.id_parcela, sesion.token);
+        if (detalle) {
+          const coords = detalle.geometria?.coordinates || [
+            detalle.coordenadas || [
+              [-93.2, 16.2],
+              [-93.2, 16.21],
+              [-93.19, 16.21],
+              [-93.19, 16.2],
+              [-93.2, 16.2],
+            ],
+          ];
+
+          const parcelaDescargada: Parcela = {
+            id_parcela: detalle.id_parcela,
+            nombre: detalle.nombre || resumen.nombre || `Parcela ${detalle.area_ha} ha`,
+            area_ha: detalle.area_ha,
+            estado_region: 'preparada',
+            metodo_delimitacion: 'dibujo',
+            region: detalle.region || 'frailesca',
+            fecha_creacion: new Date().toISOString(),
+            poligono: {
+              type: 'Polygon',
+              coordinates: coords,
+            },
+          };
+
+          setParcelaActiva(parcelaDescargada);
+
+          if (detalle.declaracion) {
+            const rotacion = Array.isArray(detalle.declaracion.ciclos_previos)
+              ? detalle.declaracion.ciclos_previos.map((c: string, idx: number) => ({
+                  ciclo: idx + 1,
+                  etiqueta: `Ciclo ${idx + 1}`,
+                  cultivo: c.charAt(0).toUpperCase() + c.slice(1),
+                }))
+              : ROTACION_PREDETERMINADA_3_CICLOS;
+
+            const decNube: DeclaracionCompleta = {
+              id_parcela: detalle.id_parcela,
+              tipo_tierra: (detalle.declaracion.tipo_tierra || 'negra') as any,
+              rotacion_existente: rotacion,
+              manejo: {
+                riego_veces_semana: Number(detalle.declaracion.riego_auxilio ?? 0),
+                agrego_productos: Boolean(detalle.declaracion.agrego_productos),
+                considerar_riesgo: true,
+                prioridad_principal: (detalle.declaracion.prioridad_productor || 'igual') as any,
+              },
+            };
+            setDeclaracion(decNube);
+            guardarParcelaLocal(parcelaDescargada, decNube, undefined, true, detalle.id_parcela);
+            setPasoActual(4);
+          } else {
+            setDeclaracion((prev) => ({
+              ...prev,
+              id_parcela: detalle.id_parcela,
+            }));
+            guardarParcelaLocal(parcelaDescargada, undefined, undefined, true, detalle.id_parcela);
+            setPasoActual(2);
+          }
+          setVistaActual('flujo_parcela');
+          return;
+        }
+      } catch (err) {
+        console.warn('[App] Error al descargar parcela desde la API:', err);
+      }
+    }
   };
 
   // Manejador del avance en Paso 1 (Parcela confirmada en el mapa)
-  const handleParcelaConfirmada = (parcela: Parcela) => {
+  const handleParcelaConfirmada = async (parcela: Parcela) => {
     setParcelaActiva(parcela);
     setDeclaracion((prev) => ({
       ...prev,
       id_parcela: parcela.id_parcela,
     }));
     setPasoActual(2);
+
+    // Guardar inmediatamente en almacenamiento local
+    guardarParcelaLocal(parcela);
+
+    // Si el usuario está autenticado y online, registrar la parcela en la API de inmediato
+    if (sesion?.token && !sesion.esInvitado && navigator.onLine) {
+      try {
+        const res = await apiParcelaAdapter.crearParcela(parcela, sesion.token);
+        if (res?.id_parcela) {
+          const parcelaConIdRemoto: Parcela = {
+            ...parcela,
+            id_parcela: res.id_parcela,
+          };
+          setParcelaActiva(parcelaConIdRemoto);
+          setDeclaracion((prev) => ({
+            ...prev,
+            id_parcela: res.id_parcela,
+          }));
+          guardarParcelaLocal(parcelaConIdRemoto, undefined, undefined, true, res.id_parcela);
+        }
+      } catch (err) {
+        console.warn('[App] Parcela guardada localmente para sincronización posterior:', err);
+      }
+    }
   };
 
   // Manejador del avance en Paso 2 (Historial / Suelo)

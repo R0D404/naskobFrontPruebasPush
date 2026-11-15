@@ -84,8 +84,13 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
 
       const nube = await apiParcelaAdapter.listarParcelas(sesion.token);
       // Refrescar locales tras la sincronización
-      const localesActualizados = obtenerParcelasLocales().map((loc) => ({
-        id_parcela: loc.id_parcela,
+      const localesActualizados = obtenerParcelasLocales();
+      const idsLocales = new Set(
+        localesActualizados.map((loc) => loc.id_remoto || loc.id_parcela)
+      );
+
+      const resumenesActualizados: ParcelaResumen[] = localesActualizados.map((loc) => ({
+        id_parcela: loc.id_remoto || loc.id_parcela,
         area_ha: loc.area_ha,
         estado: loc.estado,
         nombre: loc.nombre,
@@ -94,13 +99,12 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
         origen: 'local' as const,
       }));
 
-      // Combinar con locales sin duplicar
-      const idsLocales = new Set(localesActualizados.map((p) => p.id_parcela));
+      // Combinar con parcelas de la nube (de otros dispositivos) sin duplicar
       const nubeFiltradas: ParcelaResumen[] = nube
         .filter((p) => !idsLocales.has(p.id_parcela))
-        .map((p) => ({ ...p, origen: 'nube' }));
+        .map((p) => ({ ...p, origen: 'nube' as const }));
 
-      setParcelas([...localesActualizados, ...nubeFiltradas]);
+      setParcelas([...resumenesActualizados, ...nubeFiltradas]);
       setEstaEnLinea(true);
     } catch (err: any) {
       if (err.message === 'OFFLINE_OR_UNREACHABLE') {
@@ -335,20 +339,25 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      {parcela.origen === 'local' && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            eliminarParcelaLocal(parcela.id_parcela);
-                            cargarParcelas();
-                          }}
-                          className="p-1.5 rounded-lg text-terra/60 hover:text-terra hover:bg-terra-bg/50 transition-all cursor-pointer"
-                          title="Eliminar parcela de este dispositivo"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          eliminarParcelaLocal(parcela.id_parcela);
+                          if (estaEnLinea && sesion?.token && !sesion.token.startsWith('demo_')) {
+                            try {
+                              await apiParcelaAdapter.eliminarParcela(parcela.id_parcela, sesion.token);
+                            } catch (err) {
+                              console.warn('[DashboardParcelasView] Error al eliminar de API:', err);
+                            }
+                          }
+                          cargarParcelas();
+                        }}
+                        className="p-1.5 rounded-lg text-terra/60 hover:text-terra hover:bg-terra-bg/50 transition-all cursor-pointer"
+                        title="Eliminar parcela"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
 
                       <button
                         type="button"

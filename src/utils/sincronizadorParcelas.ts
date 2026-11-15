@@ -23,11 +23,20 @@ export async function sincronizarParcelasPendientes(): Promise<{
 
   for (const item of pendientes) {
     try {
-      // 1. Crear parcela en la API
-      const res = await apiParcelaAdapter.crearParcela(item.parcela, sesion.token);
-      const idRemoto = res.id_parcela;
+      let idRemoto = item.id_remoto;
+      const esIdLocal = !item.parcela.id_parcela || item.parcela.id_parcela.startsWith('parc_') || item.parcela.id_parcela === 'parcela_activa';
 
-      // 2. Si tiene declaración, guardarla en la API
+      // 1. Crear parcela en la API si aún no tiene ID remoto asignado
+      if (!idRemoto) {
+        if (esIdLocal) {
+          const res = await apiParcelaAdapter.crearParcela(item.parcela, sesion.token);
+          idRemoto = res.id_parcela;
+        } else {
+          idRemoto = item.parcela.id_parcela;
+        }
+      }
+
+      // 2. Si tiene declaración, sincronizarla en la API
       if (item.declaracion && idRemoto) {
         try {
           await apiParcelaAdapter.guardarDeclaracion(idRemoto, item.declaracion, sesion.token);
