@@ -133,7 +133,8 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
           {chiapasListo ? (
             <div className="flex items-center gap-1.5 text-ok font-bold">
               <CheckCircle2 className="w-4 h-4 text-ok shrink-0" />
-              <span>Todo Chiapas Offline: Guardado (54 MB en dispositivo · Cobertura estatal completa)</span>
+              <span className="hidden sm:inline">Todo Chiapas Offline: Guardado (54 MB en dispositivo · Cobertura estatal completa)</span>
+              <span className="sm:hidden text-[11px]">Chiapas Offline: Guardado (54 MB)</span>
             </div>
           ) : descargando === 'chiapas' ? (
             <div className="flex items-center gap-1.5 text-navy font-bold">

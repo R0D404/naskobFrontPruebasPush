@@ -375,7 +375,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
 
     map.addControl(
       new maplibregl.NavigationControl({ showCompass: true, visualizePitch: false }),
-      'top-right'
+      'bottom-right'
     );
     map.addControl(
       new maplibregl.ScaleControl({ maxWidth: 110, unit: 'metric' }),
@@ -912,61 +912,58 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
       <GestorMapaOffline onMapLoaded={handleMapLoaded} />
 
       {/* Barra de Control Compacta: Selector de Modo y Estado GPS */}
-      <div className="bg-white border border-cream-line rounded-2xl p-2.5 sm:p-3 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-2.5">
-        <div className="flex items-center justify-between w-full sm:w-auto gap-3">
-          <span className="text-xs font-extrabold text-ink uppercase tracking-wider shrink-0">
-            Modo:
-          </span>
-          <div className="grid grid-cols-2 p-1 bg-cream/80 rounded-xl border border-cream-line text-xs font-bold w-full sm:w-auto shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setCaminandoActivo(false);
-                setModoCaptura('poligono');
-                setEstadoGpsTexto('Modo toque: Toca en el mapa para marcar cada esquina.');
-              }}
-              className={`py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                !caminandoActivo
-                  ? 'bg-ink text-white shadow-sm'
-                  : 'text-ink-muted hover:text-ink'
-              }`}
-            >
-              <MapPin className="w-3.5 h-3.5 text-maize" />
-              <span>1. Marcar punto</span>
-            </button>
+      <div className="bg-white border border-cream-line rounded-2xl p-2 sm:p-3 shadow-sm flex flex-col gap-2">
+        {/* Selector de modo estilo tabs 50% / 50% */}
+        <div className="grid grid-cols-2 p-1 bg-cream/90 rounded-xl border border-cream-line text-xs font-bold w-full">
+          <button
+            type="button"
+            onClick={() => {
+              setCaminandoActivo(false);
+              setModoCaptura('poligono');
+              setEstadoGpsTexto('Toca el mapa para marcar cada esquina.');
+            }}
+            className={`py-2 px-1.5 sm:px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 text-center min-w-0 ${
+              !caminandoActivo
+                ? 'bg-ink text-white shadow-sm'
+                : 'text-ink-muted hover:text-ink'
+            }`}
+          >
+            <MapPin className="w-3.5 h-3.5 text-maize shrink-0" />
+            <span className="truncate">1. Marcar punto</span>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setCaminandoActivo(true);
-                setModoCaptura('caminando');
-                setEstadoGpsTexto('Modo caminata GPS: Camina a una esquina y presiona "Marcar punto".');
-              }}
-              className={`py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                caminandoActivo
-                  ? 'bg-ink text-white shadow-sm'
-                  : 'text-ink-muted hover:text-ink'
-              }`}
-            >
-              <Footprints className="w-3.5 h-3.5 text-maize" />
-              <span>2. Caminar con GPS</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setCaminandoActivo(true);
+              setModoCaptura('caminando');
+              setEstadoGpsTexto('Camina y presiona "Marcar punto".');
+            }}
+            className={`py-2 px-1.5 sm:px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 text-center min-w-0 ${
+              caminandoActivo
+                ? 'bg-ink text-white shadow-sm'
+                : 'text-ink-muted hover:text-ink'
+            }`}
+          >
+            <Footprints className="w-3.5 h-3.5 text-maize shrink-0" />
+            <span className="truncate">2. Caminar con GPS</span>
+          </button>
         </div>
 
-        {/* Estado GPS y selector de tolerancia integrado */}
-        <div className="flex items-center justify-between w-full sm:w-auto gap-2 text-xs">
-          <div className="flex items-center gap-1.5 text-ink-muted text-[11px] truncate max-w-[240px] sm:max-w-xs">
+        {/* Sub-barra: Instrucción y Filtro GPS */}
+        <div className="flex items-center justify-between w-full gap-2 text-xs px-1">
+          <div className="flex items-center gap-1.5 text-ink-muted text-[11px] min-w-0 flex-1">
             <Crosshair className="w-3.5 h-3.5 text-ink shrink-0" />
             <span className="truncate">{estadoGpsTexto}</span>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0 text-[11px] text-ink-muted">
+            <span className="hidden sm:inline">Tolerancia GPS:</span>
             <select
               id="umbral-gps"
               value={umbralPrecisionMaxMetros}
               onChange={(e) => setUmbralPrecisionMaxMetros(Number(e.target.value))}
-              className="border border-cream-line rounded-lg px-2 py-1 bg-cream text-ink text-[11px] font-semibold"
+              className="border border-cream-line rounded-lg px-2 py-0.5 bg-cream text-ink text-[11px] font-semibold"
               title="Filtro de tolerancia de precisión GPS"
             >
               <option value={15}>±15 m</option>
@@ -985,7 +982,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
       )}
 
       {/* Contenedor del Mapa WebGL (Inmediatamente visible en pantalla con controles flotantes profesionales) */}
-      <div className="relative w-full h-[52vh] min-h-[380px] max-h-[540px] rounded-2xl overflow-hidden border-2 border-cream-line shadow-sm bg-[#eae6df]">
+      <div className="relative w-full h-[46vh] sm:h-[52vh] min-h-[300px] sm:min-h-[380px] max-h-[500px] rounded-2xl overflow-hidden border-2 border-cream-line shadow-sm bg-[#eae6df]">
         <div ref={mapContainerRef} className="w-full h-full" />
 
         {/* Mensaje de guía si no hay mapa descargado y el usuario está offline */}
@@ -1009,64 +1006,64 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
         )}
 
         {/* Badge Superior Izquierdo: Modo Activo y Contador de Vértices */}
-        <div className="absolute top-3 left-3 z-10 bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl border border-cream-line shadow-md text-xs flex items-center gap-2">
+        <div className="absolute top-2.5 left-2.5 z-10 bg-white/95 backdrop-blur px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border border-cream-line shadow-md text-xs flex items-center gap-1.5 max-w-[calc(100%-80px)]">
           <span
-            className={`w-2.5 h-2.5 rounded-full ${
+            className={`w-2 h-2 rounded-full shrink-0 ${
               caminandoActivo ? 'bg-terra animate-pulse' : 'bg-ok'
             }`}
           />
-          <span className="font-extrabold text-ink">
-            {caminandoActivo ? 'Caminata GPS' : 'Modo Toque en Mapa'}
+          <span className="font-extrabold text-ink text-[11px] sm:text-xs truncate">
+            {caminandoActivo ? 'Caminata GPS' : 'Modo Toque'}
           </span>
-          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-ink/10 text-ink">
-            {vertices.length} vértices
+          <span className="text-[10px] sm:text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-ink/10 text-ink shrink-0">
+            {vertices.length} pts
           </span>
         </div>
 
         {/* Botones Flotantes Superiores Derechos: Mi Ubicación GPS y Alternar Satelital (Estilo Google Maps) */}
-        <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
+        <div className="absolute top-2.5 right-2.5 z-10 flex flex-col gap-1.5">
           <button
             type="button"
             onClick={irAMiUbicacionGps}
             disabled={cargandoGps}
-            className="w-10 h-10 rounded-xl bg-white/95 backdrop-blur text-navy shadow-md border border-cream-line flex items-center justify-center hover:bg-white active:scale-95 transition"
+            className="w-9 h-9 rounded-xl bg-white/95 backdrop-blur text-navy shadow-md border border-cream-line flex items-center justify-center hover:bg-white active:scale-95 transition"
             title="Centrar mapa en mi ubicación GPS"
           >
-            <Navigation className={`w-5 h-5 ${cargandoGps ? 'animate-spin text-maize-dark' : 'text-navy'}`} />
+            <Navigation className={`w-4 h-4 ${cargandoGps ? 'animate-spin text-maize-dark' : 'text-navy'}`} />
           </button>
 
           <button
             type="button"
             onClick={() => setModoVista(modoVista === 'vectorial' ? 'satelital' : 'vectorial')}
-            className="w-10 h-10 rounded-xl bg-white/95 backdrop-blur text-ink shadow-md border border-cream-line flex items-center justify-center hover:bg-white active:scale-95 transition"
+            className="w-9 h-9 rounded-xl bg-white/95 backdrop-blur text-ink shadow-md border border-cream-line flex items-center justify-center hover:bg-white active:scale-95 transition"
             title={modoVista === 'vectorial' ? 'Cambiar a Mapa Satelital' : 'Cambiar a Mapa Vectorial'}
           >
             {modoVista === 'vectorial' ? (
-              <Satellite className="w-5 h-5 text-navy" />
+              <Satellite className="w-4 h-4 text-navy" />
             ) : (
-              <Layers className="w-5 h-5 text-ink" />
+              <Layers className="w-4 h-4 text-ink" />
             )}
           </button>
         </div>
       </div>
 
       {/* Barra de Herramientas Inferior (En la zona del pulgar: fácil y accesible con una mano) */}
-      <div className="bg-white border border-cream-line rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-white border border-cream-line rounded-2xl p-2.5 sm:p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         {caminandoActivo ? (
           /* ======================================================== */
           /* MODO 2: CAMINANDO -> BOTÓN PRINCIPAL GIGANTE AL PULGAR   */
           /* ======================================================== */
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="w-full sm:w-auto">
             <button
               type="button"
               onClick={marcarPuntoGpsActual}
               disabled={cargandoGps}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-maize hover:bg-maize-light text-ink active:scale-[0.98] transition-all shadow-md border-2 border-maize-dark/30 flex items-center justify-center gap-2.5 font-black text-sm group"
+              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-maize hover:bg-maize-light text-ink active:scale-[0.98] transition-all shadow-md border-2 border-maize-dark/30 flex items-center justify-center gap-2 font-black text-xs sm:text-sm group"
             >
-              <MapPin className="w-5 h-5 text-ink shrink-0 group-hover:scale-110 transition-transform" />
+              <MapPin className="w-4 h-4 text-ink shrink-0 group-hover:scale-110 transition-transform" />
               <span>{cargandoGps ? 'Capturando coordenadas...' : '📍 Marcar punto (Ubicación actual)'}</span>
               {ubicacionUsuario && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-ink/10 text-ink">
+                <span className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full bg-ink/10 text-ink">
                   ±{ubicacionUsuario.precision} m
                 </span>
               )}
@@ -1076,15 +1073,12 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
           /* ======================================================== */
           /* MODO 1: MARCAR PUNTO EN EL MAPA                          */
           /* ======================================================== */
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-ink-muted font-medium hidden sm:inline">
-              Toca el mapa para agregar esquinas ({vertices.length} marcadas).
-            </span>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={marcarPuntoGpsActual}
               disabled={cargandoGps}
-              className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-navy-bg text-navy hover:bg-navy/15 transition flex items-center gap-1.5"
+              className="w-full sm:w-auto px-3.5 py-2.5 rounded-xl text-xs font-bold bg-navy-bg text-navy hover:bg-navy/15 transition flex items-center justify-center gap-1.5"
             >
               <MapPin className="w-3.5 h-3.5" />
               <span>+ Marcar mi ubicación como punto</span>
@@ -1092,12 +1086,12 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
           </div>
         )}
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           <button
             type="button"
             disabled={vertices.length === 0}
             onClick={() => setVertices((prev) => prev.slice(0, -1))}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-cream text-ink hover:bg-cream-line disabled:opacity-40 transition flex items-center gap-1"
+            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold bg-cream text-ink hover:bg-cream-line disabled:opacity-40 transition flex items-center justify-center gap-1"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Deshacer</span>
@@ -1110,7 +1104,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
               setVertices([]);
               setHistorialPrecisiones([]);
             }}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-terra-bg text-terra hover:bg-terra/20 disabled:opacity-40 transition flex items-center gap-1"
+            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold bg-terra-bg text-terra hover:bg-terra/20 disabled:opacity-40 transition flex items-center justify-center gap-1"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Limpiar</span>
