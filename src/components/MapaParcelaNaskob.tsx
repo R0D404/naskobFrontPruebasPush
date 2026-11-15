@@ -101,7 +101,6 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
 
   // Parámetros de filtrado de precisión GPS para corregir el margen de error de 100 metros
   const [umbralPrecisionMaxMetros, setUmbralPrecisionMaxMetros] = useState<number>(30);
-  const DISTANCIA_MINIMA_CAMINATA_METROS = 4; // Nuevo vértice cada 4 metros reales caminados
 
   // Buffer de últimas lecturas GPS para suavizar picos (media móvil ponderada por precisión)
   const bufferLecturasGpsRef = useRef<{ lng: number; lat: number; acc: number }[]>([]);
@@ -674,7 +673,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
   }, [modoVista, procesarLecturaGps]);
 
   // ---------------------------------------------------------------------------
-  // 7. MODO "MARCAR MIENTRAS EL USUARIO CAMINA" (TRACKING GPS EN TIEMPO REAL)
+  // 7. MODO "CAMINAR CON GPS" (SEGUIMIENTO EN VIVO Y MARCADO POR BOTÓN)
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (!caminandoActivo) {
@@ -693,7 +692,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
 
     setModoCaptura('caminando');
     setEstadoGpsTexto(
-      'Modo Caminata Activo: Camina por el borde de tu parcela. Se marcará un punto automáticamente cada 4 metros.'
+      'Modo Caminata Activo: Camina hacia una esquina de tu parcela y pulsa "Marcar punto".'
     );
 
     watchIdRef.current = navigator.geolocation.watchPosition(
@@ -708,36 +707,19 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
           });
         }
 
-        // Filtro de calidad GPS: descartar rebotes de 100 metros cuando se está caminando
+        // Filtro de calidad GPS: advertencia visual si la precisión es baja
         if (lectura.precision > umbralPrecisionMaxMetros) {
           setAlertaGps(
-            `Lectura GPS pausada temporalmente por baja precisión (±${lectura.precision} m > límite de ${umbralPrecisionMaxMetros} m). Sigue caminando a cielo abierto o sube el umbral si estás probando en interiores.`
+            `Lectura GPS con baja precisión (±${lectura.precision} m > límite de ${umbralPrecisionMaxMetros} m). Espera unos segundos a cielo abierto.`
           );
           return;
         }
 
         setAlertaGps(null);
         setHistorialPrecisiones((prev) => [...prev, lectura.precision]);
-
-        setVertices((prev) => {
-          const nuevoVertice: [number, number] = [lectura.lng, lectura.lat];
-          if (prev.length === 0) {
-            setEstadoGpsTexto(`Punto inicial #1 registrado (±${lectura.precision} m). Camina hacia la siguiente esquina.`);
-            return [nuevoVertice];
-          }
-
-          const ultimoVertice = prev[prev.length - 1];
-          const distanciaPaso = distanciaHaversineMetros(ultimoVertice, nuevoVertice);
-
-          if (distanciaPaso >= DISTANCIA_MINIMA_CAMINATA_METROS) {
-            setEstadoGpsTexto(
-              `Punto #${prev.length + 1} registrado tras avanzar ${distanciaPaso.toFixed(1)} m (Precisión ±${lectura.precision} m).`
-            );
-            return [...prev, nuevoVertice];
-          }
-
-          return prev;
-        });
+        setEstadoGpsTexto(
+          `GPS listo (Precisión ±${lectura.precision} m). Párate en la esquina y presiona "Marcar punto".`
+        );
       },
       (err) => {
         setAlertaGps(`Señal GPS interrumpida durante la caminata: ${err.message}`);
@@ -745,7 +727,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
       {
         enableHighAccuracy: true,
         timeout: 12000,
-        maximumAge: 0,
+        maximumAge: 1000,
       }
     );
 
@@ -757,14 +739,72 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
     };
   }, [caminandoActivo, procesarLecturaGps, umbralPrecisionMaxMetros]);
 
-  // Agregar manualmente la coordenada GPS actual como esquina del polígono
+  // Capturar la ubicación GPS precisa actual y agregarla como vértice del polígono al pulsar el botón
   const marcarPuntoGpsActual = () => {
-    if (!ubicacionUsuario) {
-      irAMiUbicacionGps();
+    if (!('geolocation' in navigator)) {
+      setAlertaGps('Tu dispositivo no cuenta con soporte GPS.');
       return;
     }
-    setVertices((prev) => [...prev, [ubicacionUsuario.lng, ubicacionUsuario.lat]]);
-    setHistorialPrecisiones((prev) => [...prev, ubicacionUsuario.precision]);
+
+    setCargandoGps(true);
+    setEstadoGpsTexto('Obteniendo coordenadas precisas de la esquina actual...');
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCargandoGps(false);
+        const lectura = procesarLecturaGps(pos);
+        setUbicacionUsuario(lectura);
+        const nuevoPunto: [number, number] = [lectura.lng, lectura.lat];
+
+        setVertices((prev) => {
+          const actualizados = [...prev, nuevoPunto];
+          setEstadoGpsTexto(
+            `¡Vértice #${actualizados.length} registrado con éxito (±${lectura.precision} m)! Camina a la siguiente esquina.`
+          );
+          return actualizados;
+        });
+
+        setHistorialPrecisiones((prev) => [...prev, lectura.precision]);
+        setAlertaGps(null);
+
+        // Feedback háptico (vibración en dispositivos móviles)
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+          navigator.vibrate([60, 40, 60]);
+        }
+
+        if (mapRef.current) {
+          mapRef.current.easeTo({
+            center: nuevoPunto,
+            duration: 500,
+          });
+        }
+      },
+      (err) => {
+        setCargandoGps(false);
+        // Si falló el fix instantáneo pero hay una lectura reciente en memoria
+        if (ubicacionUsuario) {
+          const nuevoPunto: [number, number] = [ubicacionUsuario.lng, ubicacionUsuario.lat];
+          setVertices((prev) => {
+            const actualizados = [...prev, nuevoPunto];
+            setEstadoGpsTexto(
+              `¡Vértice #${actualizados.length} guardado con tu última posición conocida (±${ubicacionUsuario.precision} m)!`
+            );
+            return actualizados;
+          });
+          setHistorialPrecisiones((prev) => [...prev, ubicacionUsuario.precision]);
+          if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+            navigator.vibrate([60, 40, 60]);
+          }
+        } else {
+          setAlertaGps(`No se pudo obtener la posición precisa: ${err.message}`);
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 1500,
+      }
+    );
   };
 
   // Cargar parcela demostrativa en Villaflores (La Frailesca) para pruebas instantáneas en escritorio
@@ -950,6 +990,54 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
         </div>
       </div>
 
+      {/* Selector de Método de Delimitación: 1. Picar en el mapa vs 2. Caminar con GPS */}
+      <div className="bg-white border border-cream-line rounded-naskob p-3 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="space-y-0.5">
+          <span className="text-xs font-extrabold text-ink block">
+            Método de delimitación del terreno:
+          </span>
+          <p className="text-[11px] text-ink-muted">
+            Elige si prefieres picar las esquinas en la pantalla o recorrer el perímetro caminando.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 p-1 bg-cream/80 rounded-xl border border-cream-line text-xs font-bold w-full sm:w-auto shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setCaminandoActivo(false);
+              setModoCaptura('poligono');
+              setEstadoGpsTexto('Modo toque: Haz clic o toca en el mapa en cada esquina de tu parcela.');
+            }}
+            className={`py-2 px-3.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              !caminandoActivo
+                ? 'bg-ink text-white shadow-sm'
+                : 'text-ink-muted hover:text-ink hover:bg-cream/50'
+            }`}
+          >
+            <MapPin className="w-3.5 h-3.5 text-maize" />
+            <span>1. Picar en mapa</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setCaminandoActivo(true);
+              setModoCaptura('caminando');
+              setEstadoGpsTexto('Modo caminata GPS: Camina hacia una esquina y presiona "Marcar punto".');
+            }}
+            className={`py-2 px-3.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              caminandoActivo
+                ? 'bg-ink text-white shadow-sm'
+                : 'text-ink-muted hover:text-ink hover:bg-cream/50'
+            }`}
+          >
+            <Footprints className="w-3.5 h-3.5 text-maize" />
+            <span>2. Caminar con GPS</span>
+          </button>
+        </div>
+      </div>
+
       {/* Estado en vivo del GPS y filtro anti-error de 100 metros */}
       <div className="bg-white border border-cream-line rounded-naskob p-3 text-xs flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1016,53 +1104,61 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
           />
           <span className="font-bold text-ink">
             {caminandoActivo
-              ? 'Grabando recorrido GPS...'
-              : 'Modo toque en mapa o esquina GPS'}
+              ? 'Modo Caminar: Pulsa "Marcar punto"'
+              : 'Modo Picar en el mapa'}
           </span>
           <span className="text-ink-muted">({vertices.length} vértices)</span>
         </div>
       </div>
 
       {/* Barra de Herramientas de Trazado de Polígono y Caminata GPS */}
-      <div className="bg-white border border-cream-line rounded-naskob p-3 shadow-sm flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              const nuevoEstado = !caminandoActivo;
-              setCaminandoActivo(nuevoEstado);
-              setModoCaptura(nuevoEstado ? 'caminando' : 'poligono');
-            }}
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition ${
-              caminandoActivo
-                ? 'bg-terra text-white shadow-sm'
-                : 'bg-ok text-white hover:opacity-95'
-            }`}
-          >
-            <Footprints className="w-4 h-4" />
-            <span>
-              {caminandoActivo
-                ? 'Detener caminata GPS'
-                : 'Iniciar marcado caminando (GPS)'}
+      <div className="bg-white border border-cream-line rounded-naskob p-3 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {caminandoActivo ? (
+          /* ======================================================== */
+          /* MODO 2: CAMINANDO -> BOTÓN DESTACADO "MARCAR PUNTO"      */
+          /* ======================================================== */
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={marcarPuntoGpsActual}
+              disabled={cargandoGps}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-extrabold bg-maize hover:bg-maize-light text-ink active:scale-[0.98] transition-all shadow-md border-2 border-maize-dark/30 group"
+            >
+              <MapPin className="w-4 h-4 text-ink shrink-0 group-hover:scale-110 transition-transform" />
+              <span>{cargandoGps ? 'Capturando coordenadas...' : '📍 Marcar punto (Ubicación actual)'}</span>
+              {ubicacionUsuario && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-ink/10 text-ink">
+                  ±{ubicacionUsuario.precision} m
+                </span>
+              )}
+            </button>
+          </div>
+        ) : (
+          /* ======================================================== */
+          /* MODO 1: PICAR EN EL MAPA                                 */
+          /* ======================================================== */
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-ink-muted font-medium hidden sm:inline">
+              Toca el mapa para agregar esquinas ({vertices.length} marcadas).
             </span>
-          </button>
+            <button
+              type="button"
+              onClick={marcarPuntoGpsActual}
+              disabled={cargandoGps}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-navy-bg text-navy hover:bg-navy/15 transition"
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              <span>+ Marcar mi ubicación como punto</span>
+            </button>
+          </div>
+        )}
 
-          <button
-            type="button"
-            onClick={marcarPuntoGpsActual}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg text-xs font-bold bg-navy-bg text-navy hover:bg-navy/15 transition"
-          >
-            <MapPin className="w-4 h-4" />
-            <span>+ Marcar esquina con mi GPS actual</span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           <button
             type="button"
             disabled={vertices.length === 0}
             onClick={() => setVertices((prev) => prev.slice(0, -1))}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold bg-cream text-ink hover:bg-cream-line disabled:opacity-40 transition"
+            className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold bg-cream text-ink hover:bg-cream-line disabled:opacity-40 transition"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Deshacer punto</span>
@@ -1075,7 +1171,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
               setVertices([]);
               setHistorialPrecisiones([]);
             }}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold bg-terra-bg text-terra hover:bg-terra/20 disabled:opacity-40 transition"
+            className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold bg-terra-bg text-terra hover:bg-terra/20 disabled:opacity-40 transition"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Limpiar polígono</span>
