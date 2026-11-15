@@ -43,8 +43,8 @@ export class ApiParcelaAdapter implements ParcelasApiPort {
       coordinatesValidas.push([...coordinatesValidas[0]]);
     }
 
+    // ParcelaCreateDTO en backend tiene extra="forbid", por lo que solo admite 'modo' y 'geometria'
     const payload = {
-      nombre: parcela.nombre || 'Parcela Chiapas',
       modo: 'poligono',
       geometria: {
         type: 'Polygon',
@@ -169,7 +169,7 @@ export class ApiParcelaAdapter implements ParcelasApiPort {
   }
 
   /**
-   * POST /v1/parcelas/{id_parcela}/declaraciones
+   * PATCH /v1/parcelas/{id_parcela} (y fallback POST /v1/parcelas/{id_parcela}/declaraciones)
    * Guardar Declaración: Registra los 3 ciclos previos, tipo de tierra, riegos/semana y prioridad.
    */
   async guardarDeclaracion(
@@ -177,8 +177,6 @@ export class ApiParcelaAdapter implements ParcelasApiPort {
     declaracion: DeclaracionCompleta,
     token?: string
   ): Promise<any> {
-    const url = `${BASE_URL}/parcelas/${idParcela}/declaraciones`;
-
     const rotacion = declaracion.rotacion_existente || [];
     const payload = {
       rotacion_existente: rotacion.map((r) => ({
@@ -193,11 +191,29 @@ export class ApiParcelaAdapter implements ParcelasApiPort {
       region: 'frailesca',
     };
 
+    const headers = this.getHeaders(token);
+
+    // 1. Intentar PATCH /v1/parcelas/{id_parcela} según contrato backend oficial
+    try {
+      const resPatch = await fetch(`${BASE_URL}/parcelas/${idParcela}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      if (resPatch.ok) {
+        return await resPatch.json();
+      }
+    } catch {
+      // Continuar al siguiente intento o error de red
+    }
+
+    // 2. Fallback a POST /v1/parcelas/{id_parcela}/declaraciones
     let response: Response;
     try {
-      response = await fetch(url, {
+      response = await fetch(`${BASE_URL}/parcelas/${idParcela}/declaraciones`, {
         method: 'POST',
-        headers: this.getHeaders(token),
+        headers,
         body: JSON.stringify(payload),
       });
     } catch {
