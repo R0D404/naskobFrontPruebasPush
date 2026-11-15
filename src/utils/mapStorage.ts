@@ -75,15 +75,20 @@ export async function getStoredMapBlob(key: MapKey): Promise<Blob | null> {
   // 1. Intentar IndexedDB
   try {
     const db = await openIDB();
-    const blob = await new Promise<Blob | null>((resolve, reject) => {
+    const result = await new Promise<any>((resolve, reject) => {
       const tx = db.transaction(IDB_STORE, 'readonly');
       const store = tx.objectStore(IDB_STORE);
       const req = store.get(key);
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
     });
-    if (blob && blob.size > 0) {
-      return blob;
+    if (result) {
+      if (result instanceof Blob && result.size > 0) {
+        return result;
+      }
+      if (result instanceof ArrayBuffer && result.byteLength > 0) {
+        return new Blob([result], { type: 'application/octet-stream' });
+      }
     }
   } catch (err) {
     console.warn('[mapStorage] Error leyendo de IndexedDB:', err);
@@ -106,16 +111,17 @@ export async function getStoredMapBlob(key: MapKey): Promise<Blob | null> {
 }
 
 /**
- * Guarda el Blob en IndexedDB y en CacheStorage de forma redundante
+ * Guarda el mapa en IndexedDB (como ArrayBuffer para compatibilidad universal) y en CacheStorage
  */
 export async function saveMapBlob(key: MapKey, blob: Blob): Promise<void> {
-  // 1. Guardar en IndexedDB
+  // 1. Guardar en IndexedDB como ArrayBuffer
   try {
+    const buffer = await blob.arrayBuffer();
     const db = await openIDB();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(IDB_STORE, 'readwrite');
       const store = tx.objectStore(IDB_STORE);
-      const req = store.put(blob, key);
+      const req = store.put(buffer, key);
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
     });
@@ -123,7 +129,7 @@ export async function saveMapBlob(key: MapKey, blob: Blob): Promise<void> {
     console.warn('[mapStorage] No se pudo guardar en IndexedDB:', err);
   }
 
-  // 2. Guardar en CacheStorage
+  // 2. Guardar en CacheStorage de forma complementaria
   try {
     if (typeof caches !== 'undefined') {
       const cache = await caches.open(CACHE_NAME);
@@ -131,7 +137,6 @@ export async function saveMapBlob(key: MapKey, blob: Blob): Promise<void> {
         headers: {
           'Content-Type': 'application/octet-stream',
           'Content-Length': String(blob.size),
-          'Accept-Ranges': 'bytes',
         },
       });
       await cache.put(MAP_CONFIGS[key].downloadUrl, res);
