@@ -990,14 +990,14 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
         </div>
       </div>
 
-      {/* Selector de Método de Delimitación: 1. Picar en el mapa vs 2. Caminar con GPS */}
+      {/* Selector de Método de Delimitación: 1. Marcar punto en el mapa vs 2. Caminar con GPS */}
       <div className="bg-white border border-cream-line rounded-naskob p-3 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="space-y-0.5">
           <span className="text-xs font-extrabold text-ink block">
             Método de delimitación del terreno:
           </span>
           <p className="text-[11px] text-ink-muted">
-            Elige si prefieres picar las esquinas en la pantalla o recorrer el perímetro caminando.
+            Elige si prefieres marcar los puntos en la pantalla o recorrer el perímetro caminando.
           </p>
         </div>
 
@@ -1007,7 +1007,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
             onClick={() => {
               setCaminandoActivo(false);
               setModoCaptura('poligono');
-              setEstadoGpsTexto('Modo toque: Haz clic o toca en el mapa en cada esquina de tu parcela.');
+              setEstadoGpsTexto('Modo toque: Haz clic o toca en el mapa para marcar cada punto de tu parcela.');
             }}
             className={`py-2 px-3.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               !caminandoActivo
@@ -1016,7 +1016,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
             }`}
           >
             <MapPin className="w-3.5 h-3.5 text-maize" />
-            <span>1. Picar en mapa</span>
+            <span>1. Marcar punto</span>
           </button>
 
           <button
@@ -1105,7 +1105,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
           <span className="font-bold text-ink">
             {caminandoActivo
               ? 'Modo Caminar: Pulsa "Marcar punto"'
-              : 'Modo Picar en el mapa'}
+              : 'Modo Marcar punto en el mapa'}
           </span>
           <span className="text-ink-muted">({vertices.length} vértices)</span>
         </div>
@@ -1135,7 +1135,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
           </div>
         ) : (
           /* ======================================================== */
-          /* MODO 1: PICAR EN EL MAPA                                 */
+          /* MODO 1: MARCAR PUNTO EN EL MAPA                          */
           /* ======================================================== */
           <div className="flex items-center gap-2">
             <span className="text-xs text-ink-muted font-medium hidden sm:inline">
