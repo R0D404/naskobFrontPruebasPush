@@ -17,8 +17,8 @@ import { SesionUsuario } from '@/domain/models/auth';
 import { ParcelaResumen } from '@/domain/models/parcelaResumen';
 import { apiParcelaAdapter } from '@/infrastructure/adapters/apiParcelaAdapter';
 import {
-  obtenerParcelasLocales,
   eliminarParcelaLocal,
+  limpiarYConsolidarParcelasLocales,
 } from '@/utils/parcelasStorage';
 import { sincronizarParcelasPendientes } from '@/utils/sincronizadorParcelas';
 
@@ -58,10 +58,10 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
     setCargando(true);
     setErrorCarga(null);
 
-    // 1. Cargar parcelas guardadas localmente en este dispositivo
-    const locales = obtenerParcelasLocales();
+    // 1. Consolidar y cargar parcelas guardadas localmente en este dispositivo
+    const locales = limpiarYConsolidarParcelasLocales();
     const resumenesLocales: ParcelaResumen[] = locales.map((loc) => ({
-      id_parcela: loc.id_parcela,
+      id_parcela: loc.id_remoto || loc.id_parcela,
       area_ha: loc.area_ha,
       estado: loc.estado,
       nombre: loc.nombre,
@@ -83,11 +83,18 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
       await sincronizarParcelasPendientes();
 
       const nube = await apiParcelaAdapter.listarParcelas(sesion.token);
-      // Refrescar locales tras la sincronización
-      const localesActualizados = obtenerParcelasLocales();
-      const idsLocales = new Set(
-        localesActualizados.map((loc) => loc.id_remoto || loc.id_parcela)
-      );
+      // Refrescar y consolidar locales tras la sincronización
+      const localesActualizados = limpiarYConsolidarParcelasLocales();
+      const idsLocales = new Set<string>();
+      const firmasLocales = new Set<string>();
+
+      localesActualizados.forEach((loc) => {
+        if (loc.id_parcela) idsLocales.add(loc.id_parcela);
+        if (loc.id_remoto) idsLocales.add(loc.id_remoto);
+        if (loc.nombre) {
+          firmasLocales.add(`${loc.nombre.trim().toLowerCase()}_${loc.area_ha.toFixed(2)}`);
+        }
+      });
 
       const resumenesActualizados: ParcelaResumen[] = localesActualizados.map((loc) => ({
         id_parcela: loc.id_remoto || loc.id_parcela,
@@ -99,12 +106,29 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
         origen: 'local' as const,
       }));
 
-      // Combinar con parcelas de la nube (de otros dispositivos) sin duplicar
-      const nubeFiltradas: ParcelaResumen[] = nube
-        .filter((p) => !idsLocales.has(p.id_parcela))
-        .map((p) => ({ ...p, origen: 'nube' as const }));
+      // Deduplicar la lista que viene de la nube (evitando que parcelas repetidas en la BD se dupliquen)
+      const nubeDeduplicada: ParcelaResumen[] = [];
+      const firmasNubeVistas = new Set<string>();
 
-      setParcelas([...resumenesActualizados, ...nubeFiltradas]);
+      for (const p of nube) {
+        const id = p.id_parcela;
+        const firma = p.nombre
+          ? `${p.nombre.trim().toLowerCase()}_${Number(p.area_ha).toFixed(2)}`
+          : id;
+
+        // Si ya está en locales o ya la agregamos de la nube, omitir
+        if (idsLocales.has(id) || firmasLocales.has(firma) || firmasNubeVistas.has(firma)) {
+          continue;
+        }
+
+        firmasNubeVistas.add(firma);
+        nubeDeduplicada.push({
+          ...p,
+          origen: 'nube' as const,
+        });
+      }
+
+      setParcelas([...resumenesActualizados, ...nubeDeduplicada]);
       setEstaEnLinea(true);
     } catch (err: any) {
       if (err.message === 'OFFLINE_OR_UNREACHABLE') {

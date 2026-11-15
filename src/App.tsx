@@ -11,7 +11,7 @@ import { Parcela } from '@/domain/models/parcela';
 import { SesionUsuario } from '@/domain/models/auth';
 import { ParcelaResumen } from '@/domain/models/parcelaResumen';
 import { obtenerSesion, guardarSesion, limpiarSesion } from '@/utils/sessionStorage';
-import { obtenerParcelasLocales, guardarParcelaLocal } from '@/utils/parcelasStorage';
+import { obtenerParcelasLocales, guardarParcelaLocal, limpiarYConsolidarParcelasLocales } from '@/utils/parcelasStorage';
 import { sincronizarParcelasPendientes } from '@/utils/sincronizadorParcelas';
 import { apiAuthAdapter } from '@/infrastructure/adapters/apiAuthAdapter';
 import { apiParcelaAdapter } from '@/infrastructure/adapters/apiParcelaAdapter';
@@ -51,6 +51,7 @@ export default function App() {
     const intentarSincronizacion = async () => {
       if (typeof navigator !== 'undefined' && navigator.onLine && sesion?.token && !sesion.esInvitado) {
         try {
+          limpiarYConsolidarParcelasLocales();
           await sincronizarParcelasPendientes();
         } catch (err) {
           console.warn('[App] Error en sincronización de parcelas pendientes:', err);
@@ -172,14 +173,14 @@ export default function App() {
               },
             };
             setDeclaracion(decNube);
-            guardarParcelaLocal(parcelaDescargada, decNube, undefined, true, detalle.id_parcela);
+            guardarParcelaLocal(parcelaDescargada, decNube, undefined, true, detalle.id_parcela, detalle.id_parcela);
             setPasoActual(4);
           } else {
             setDeclaracion((prev) => ({
               ...prev,
               id_parcela: detalle.id_parcela,
             }));
-            guardarParcelaLocal(parcelaDescargada, undefined, undefined, true, detalle.id_parcela);
+            guardarParcelaLocal(parcelaDescargada, undefined, undefined, true, detalle.id_parcela, detalle.id_parcela);
             setPasoActual(2);
           }
           setVistaActual('flujo_parcela');
@@ -193,36 +194,41 @@ export default function App() {
 
   // Manejador del avance en Paso 1 (Parcela confirmada en el mapa)
   const handleParcelaConfirmada = async (parcela: Parcela) => {
-    setParcelaActiva(parcela);
-    setDeclaracion((prev) => ({
-      ...prev,
-      id_parcela: parcela.id_parcela,
-    }));
-    setPasoActual(2);
-
-    // Guardar inmediatamente en almacenamiento local
-    guardarParcelaLocal(parcela);
+    let parcelaFinal = parcela;
+    let idRemoto: string | undefined = undefined;
 
     // Si el usuario está autenticado y online, registrar la parcela en la API de inmediato
     if (sesion?.token && !sesion.esInvitado && navigator.onLine) {
       try {
         const res = await apiParcelaAdapter.crearParcela(parcela, sesion.token);
         if (res?.id_parcela) {
-          const parcelaConIdRemoto: Parcela = {
+          idRemoto = res.id_parcela;
+          parcelaFinal = {
             ...parcela,
             id_parcela: res.id_parcela,
           };
-          setParcelaActiva(parcelaConIdRemoto);
-          setDeclaracion((prev) => ({
-            ...prev,
-            id_parcela: res.id_parcela,
-          }));
-          guardarParcelaLocal(parcelaConIdRemoto, undefined, undefined, true, res.id_parcela);
         }
       } catch (err) {
-        console.warn('[App] Parcela guardada localmente para sincronización posterior:', err);
+        console.warn('[App] Error al registrar parcela en API, se mantendrá para sincronización:', err);
       }
     }
+
+    setParcelaActiva(parcelaFinal);
+    setDeclaracion((prev) => ({
+      ...prev,
+      id_parcela: parcelaFinal.id_parcela,
+    }));
+    setPasoActual(2);
+
+    // Guardar inmediatamente en almacenamiento local consolidando y reemplazando el ID temporal previo
+    guardarParcelaLocal(
+      parcelaFinal,
+      undefined,
+      undefined,
+      Boolean(idRemoto),
+      idRemoto,
+      parcela.id_parcela
+    );
   };
 
   // Manejador del avance en Paso 2 (Historial / Suelo)

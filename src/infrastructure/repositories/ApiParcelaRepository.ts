@@ -33,7 +33,7 @@ export class ApiParcelaRepository implements ParcelaRepository {
         const respuesta = await apiParcelaAdapter.crearParcela(nuevaParcela, sesion.token);
         if (respuesta?.id_parcela) {
           nuevaParcela.id_parcela = String(respuesta.id_parcela);
-          guardarParcelaLocal(nuevaParcela, undefined, undefined, true, String(respuesta.id_parcela));
+          guardarParcelaLocal(nuevaParcela, undefined, undefined, true, String(respuesta.id_parcela), idLocal);
           this.parcelaActiva = nuevaParcela;
         }
       } catch (err) {

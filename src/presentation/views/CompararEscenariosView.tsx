@@ -24,7 +24,7 @@ import { evaluacionService } from '@/compositionRoot';
 import { ExportarReporteService } from '@/application/services/ExportarReporteService';
 import { TarjetaEscenarioDetalle } from '@/presentation/components/domain/TarjetaEscenarioDetalle';
 import { PerfilAgroclimaticoView } from '@/presentation/components/domain/PerfilAgroclimaticoView';
-import { guardarParcelaLocal, marcarParcelaComoSincronizada } from '@/utils/parcelasStorage';
+import { guardarParcelaLocal } from '@/utils/parcelasStorage';
 import { apiParcelaAdapter } from '@/infrastructure/adapters/apiParcelaAdapter';
 import { obtenerSesion } from '@/utils/sessionStorage';
 
@@ -61,35 +61,48 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
     setGuardandoEnNube(true);
     const mejorCultivo = evaluacion?.escenarios[0]?.nombre || 'Frijol';
 
-    // 1. Guardar localmente para respaldo y modo offline
-    guardarParcelaLocal(parcela, declaracion, mejorCultivo);
-    setGuardadoExitoso(true);
+    let idRemoto = parcela.id_parcela;
+    const esLocal = !idRemoto || idRemoto.startsWith('parc_') || idRemoto === 'parcela_activa';
+    let sincronizadoExitoso = !esLocal;
+    const idLocalPrevio = esLocal ? parcela.id_parcela : undefined;
 
-    // 2. Si hay sesión activa e internet, persistir en la Base de Datos de la API
+    // Si hay sesión activa e internet, persistir en la Base de Datos de la API
     const sesion = obtenerSesion();
     if (sesion?.token && !sesion.esInvitado && navigator.onLine) {
       try {
-        let idRemoto = parcela.id_parcela;
-        const esLocal = !idRemoto || idRemoto.startsWith('parc_') || idRemoto === 'parcela_activa';
-
         if (esLocal) {
+          // Solo crear en la API si no existía remotamente
           const res = await apiParcelaAdapter.crearParcela(parcela, sesion.token);
           if (res?.id_parcela) {
             idRemoto = res.id_parcela;
-            marcarParcelaComoSincronizada(parcela.id_parcela, idRemoto);
+            parcela.id_parcela = idRemoto;
+            declaracion.id_parcela = idRemoto;
+            sincronizadoExitoso = true;
           }
         }
 
-        // Si tenemos el ID en BD, guardar también la declaración
+        // Si tenemos ID en BD (ya sea previo o recién creado), guardar la declaración
         if (idRemoto && !idRemoto.startsWith('parc_')) {
           await apiParcelaAdapter.guardarDeclaracion(idRemoto, declaracion, sesion.token);
-          marcarParcelaComoSincronizada(parcela.id_parcela, idRemoto);
+          sincronizadoExitoso = true;
         }
       } catch (err) {
         console.warn('[CompararEscenariosView] Guardado en BD falló (se mantendrá local):', err);
+        sincronizadoExitoso = false;
       }
     }
 
+    // Guardar localmente consolidando y actualizando el registro sin duplicar
+    guardarParcelaLocal(
+      parcela,
+      declaracion,
+      mejorCultivo,
+      sincronizadoExitoso,
+      idRemoto && !idRemoto.startsWith('parc_') ? idRemoto : undefined,
+      idLocalPrevio
+    );
+
+    setGuardadoExitoso(true);
     setGuardandoEnNube(false);
   };
 
