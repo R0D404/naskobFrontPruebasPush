@@ -11,19 +11,21 @@ import {
   AlertCircle,
   Satellite,
   RefreshCw,
+  ChevronLeft,
 } from 'lucide-react';
-import { SesionUsuario } from '@/domain/models/auth';
+import { SesionUsuario, SESION_INVITADO } from '@/domain/models/auth';
 import { apiAuthAdapter } from '@/infrastructure/adapters/apiAuthAdapter';
 
 export interface LoginAuthViewProps {
   alAutenticar: (sesion: SesionUsuario) => void;
+  alVolver?: () => void;
 }
 
 type ModoAuth = 'login' | 'registro';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) => {
+export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar, alVolver }) => {
   const [modo, setModo] = useState<ModoAuth>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -110,12 +112,11 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
   };
 
   const handleDemoMode = () => {
-    alAutenticar({
-      correo: 'productor.demo@naskob.org',
-      token: `demo_token_${Date.now()}`,
-      tipo: 'Bearer',
-      esInvitado: true,
-    });
+    if (alVolver) {
+      alVolver();
+    } else {
+      alAutenticar(SESION_INVITADO);
+    }
   };
 
   const cambiarModo = (nuevoModo: ModoAuth) => {
@@ -128,7 +129,18 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
 
   return (
     <div className="w-full h-full min-h-screen overflow-y-auto bg-cream flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full mx-auto space-y-6 my-auto">
+      <div className="max-w-md w-full mx-auto space-y-4 my-auto">
+        {alVolver && (
+          <button
+            type="button"
+            onClick={alVolver}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cream-line bg-white/80 hover:bg-white text-ink text-xs font-bold transition-all shadow-sm"
+          >
+            <ChevronLeft className="w-4 h-4 text-ink" />
+            <span>Volver a Mis Parcelas</span>
+          </button>
+        )}
+
         {/* Card Principal de Bienvenida */}
         <div className="bg-white rounded-2xl border border-cream-line shadow-sm p-6 sm:p-8 space-y-6">
           {/* Encabezado con Icono y Títulos */}

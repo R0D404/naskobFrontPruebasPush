@@ -6,6 +6,7 @@ import {
   Wifi,
   WifiOff,
   LogOut,
+  LogIn,
   RefreshCw,
   AlertCircle,
   Layers,
@@ -26,6 +27,7 @@ export interface DashboardParcelasViewProps {
   sesion: SesionUsuario;
   alAgregarParcela: () => void;
   alCerrarSesion: () => void;
+  alIniciarSesion?: () => void;
   alSeleccionarParcela?: (parcela: ParcelaResumen) => void;
 }
 
@@ -33,6 +35,7 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
   sesion,
   alAgregarParcela,
   alCerrarSesion,
+  alIniciarSesion,
   alSeleccionarParcela,
 }) => {
   const [estaEnLinea, setEstaEnLinea] = useState<boolean>(navigator.onLine);
@@ -71,7 +74,7 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
     }));
 
     // Si no hay conexión o es usuario demo/invitado, usamos directamente las locales
-    if (!navigator.onLine || sesion.token.startsWith('demo_')) {
+    if (!navigator.onLine || sesion.token.startsWith('demo_') || sesion.esInvitado) {
       setEstaEnLinea(navigator.onLine);
       setParcelas(resumenesLocales);
       setCargando(false);
@@ -197,15 +200,27 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
                 <span className="hidden sm:inline">Actualizar</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={alCerrarSesion}
-              className="p-2.5 rounded-xl border border-cream-line text-terra hover:bg-terra-bg/30 transition-all text-xs font-bold flex items-center gap-1.5"
-              title="Cerrar sesión"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Salir</span>
-            </button>
+            {sesion.esInvitado ? (
+              <button
+                type="button"
+                onClick={alIniciarSesion}
+                className="px-3 py-2 rounded-xl border border-cream-line bg-ink text-white hover:bg-ink-light active:scale-[0.98] transition-all text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                title="Iniciar sesión"
+              >
+                <LogIn className="w-4 h-4 text-maize shrink-0" />
+                <span>Iniciar sesión</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={alCerrarSesion}
+                className="p-2.5 sm:px-3 sm:py-2 rounded-xl border border-cream-line text-terra hover:bg-terra-bg/30 active:scale-[0.98] transition-all text-xs font-bold flex items-center gap-1.5"
+                title="Cerrar sesión"
+              >
+                <LogOut className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Salir</span>
+              </button>
+            )}
           </div>
         </div>
 

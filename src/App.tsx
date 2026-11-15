@@ -8,7 +8,7 @@ import { HistorialSueloView } from '@/presentation/views/HistorialSueloView';
 import { ManejoPrioridadesView } from '@/presentation/views/ManejoPrioridadesView';
 import { CompararEscenariosView } from '@/presentation/views/CompararEscenariosView';
 import { Parcela } from '@/domain/models/parcela';
-import { SesionUsuario } from '@/domain/models/auth';
+import { SesionUsuario, SESION_INVITADO } from '@/domain/models/auth';
 import { ParcelaResumen } from '@/domain/models/parcelaResumen';
 import { obtenerSesion, guardarSesion, limpiarSesion } from '@/utils/sessionStorage';
 import { obtenerParcelasLocales, guardarParcelaLocal, limpiarYConsolidarParcelasLocales } from '@/utils/parcelasStorage';
@@ -25,13 +25,16 @@ import {
 } from '@/domain/models/declaracion';
 
 export type PasoFlujo = 1 | 2 | 3 | 4;
-export type VistaApp = 'dashboard' | 'flujo_parcela';
+export type VistaApp = 'dashboard' | 'flujo_parcela' | 'login';
 
 export default function App() {
-  // Estado de Sesión (Persistido en localStorage para funcionar offline)
-  const [sesion, setSesion] = useState<SesionUsuario | null>(() => obtenerSesion());
+  // Estado de Sesión (Persistido en localStorage si existe, o Invitado por defecto)
+  const [sesion, setSesion] = useState<SesionUsuario>(() => {
+    const guardada = obtenerSesion();
+    return guardada || SESION_INVITADO;
+  });
 
-  // Navegación principal: Dashboard de Parcelas o Flujo de Evaluación de Parcela (Pasos 1 a 4)
+  // Navegación principal: Dashboard de Parcelas, Flujo de Parcela (Pasos 1 a 4) o Login
   const [vistaActual, setVistaActual] = useState<VistaApp>('dashboard');
   const [pasoActual, setPasoActual] = useState<PasoFlujo>(1);
 
@@ -73,13 +76,18 @@ export default function App() {
     setVistaActual('dashboard');
   };
 
-  // Manejador de Cierre de Sesión
+  // Manejador de Ir a Iniciar Sesión (desde modo invitado)
+  const handleIrALogin = () => {
+    setVistaActual('login');
+  };
+
+  // Manejador de Cierre de Sesión (vuelve a modo invitado en el dashboard)
   const handleCerrarSesion = () => {
-    if (sesion?.token) {
+    if (sesion?.token && !sesion.esInvitado) {
       apiAuthAdapter.cerrarSesion(sesion.token);
     }
     limpiarSesion();
-    setSesion(null);
+    setSesion(SESION_INVITADO);
     setVistaActual('dashboard');
     setParcelaActiva(null);
   };
@@ -266,21 +274,27 @@ export default function App() {
   };
 
   // ========================================================
-  // 1. SI NO HAY SESIÓN: PANTALLA DE LOGIN
+  // 1. VISTA DE INICIO DE SESIÓN / REGISTRO
   // ========================================================
-  if (!sesion) {
-    return <LoginAuthView alAutenticar={handleAutenticado} />;
+  if (vistaActual === 'login') {
+    return (
+      <LoginAuthView
+        alAutenticar={handleAutenticado}
+        alVolver={() => setVistaActual('dashboard')}
+      />
+    );
   }
 
   // ========================================================
-  // 2. SI HAY SESIÓN Y ESTÁ EN DASHBOARD: MIS PARCELAS
+  // 2. DASHBOARD: MIS PARCELAS (POR DEFECTO, INCLUYE MODO INVITADO)
   // ========================================================
   if (vistaActual === 'dashboard') {
     return (
       <DashboardParcelasView
-        sesion={sesion}
+        sesion={sesion || SESION_INVITADO}
         alAgregarParcela={handleIniciarNuevaParcela}
         alCerrarSesion={handleCerrarSesion}
+        alIniciarSesion={handleIrALogin}
         alSeleccionarParcela={handleSeleccionarParcelaExistente}
       />
     );

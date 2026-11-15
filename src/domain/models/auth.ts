@@ -6,6 +6,13 @@ export interface SesionUsuario {
   esInvitado: boolean;
 }
 
+export const SESION_INVITADO: SesionUsuario = {
+  correo: 'productor.demo@naskob.org',
+  token: 'demo_token_invitado',
+  tipo: 'Bearer',
+  esInvitado: true,
+};
+
 export interface CredencialesLogin {
   correo: string;
   contrasena: string;
