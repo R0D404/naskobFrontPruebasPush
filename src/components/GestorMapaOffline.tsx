@@ -79,15 +79,15 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
           }
         }
 
-        // 1. Si Frailesca no está guardado y hay internet, descargarlo primero (rápido 2s)
-        if (!tieneFrailesca && navigator.onLine) {
-          await ejecutarDescarga('frailesca');
+        // 1. PRIORIDAD TOTAL: Si Chiapas completo no está guardado y hay internet, descargarlo primero
+        if (!tieneChiapas && navigator.onLine && activo) {
+          await descargarMapaDirecto('chiapas');
         }
 
-        // 2. Si Chiapas completo no está guardado y hay internet, auto-descargarlo para cobertura estatal total
-        const tieneChiapasActualizado = await isMapStored('chiapas');
-        if (!tieneChiapasActualizado && navigator.onLine && activo) {
-          await ejecutarDescarga('chiapas');
+        // 2. Si Frailesca regional de alta resolución no está guardado, descargarlo
+        const tieneFrailescaActualizado = await isMapStored('frailesca');
+        if (!tieneFrailescaActualizado && navigator.onLine && activo) {
+          await descargarMapaDirecto('frailesca');
         }
       } catch (err) {
         console.warn('[GestorMapaOffline] Error al verificar mapas:', err);
@@ -101,8 +101,7 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
     };
   }, []);
 
-  const ejecutarDescarga = async (key: MapKey) => {
-    if (descargando) return;
+  const descargarMapaDirecto = async (key: MapKey) => {
     setDescargando(key);
     setMensajeError(null);
     setProgresoDescarga({ percent: 0, loadedMb: '0.0', totalMb: MAP_CONFIGS[key].sizeLabel });
@@ -127,6 +126,11 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
       setDescargando(null);
       setProgresoDescarga(null);
     }
+  };
+
+  const ejecutarDescarga = async (key: MapKey) => {
+    if (descargando) return;
+    await descargarMapaDirecto(key);
   };
 
   const ejecutarEliminar = async (key: MapKey) => {
