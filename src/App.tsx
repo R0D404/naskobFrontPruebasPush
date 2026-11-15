@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sprout, MapPin, Check, ChevronLeft } from 'lucide-react';
 import { BotonInstalarPWA } from './components/BotonInstalarPWA';
 import { LoginAuthView } from '@/presentation/views/LoginAuthView';
@@ -12,6 +12,7 @@ import { SesionUsuario } from '@/domain/models/auth';
 import { ParcelaResumen } from '@/domain/models/parcelaResumen';
 import { obtenerSesion, guardarSesion, limpiarSesion } from '@/utils/sessionStorage';
 import { obtenerParcelasLocales } from '@/utils/parcelasStorage';
+import { sincronizarParcelasPendientes } from '@/utils/sincronizadorParcelas';
 import { apiAuthAdapter } from '@/infrastructure/adapters/apiAuthAdapter';
 import {
   DeclaracionCompleta,
@@ -43,6 +44,25 @@ export default function App() {
     tipo_tierra: 'negra',
     manejo: MANEJO_PREDETERMINADO,
   });
+
+  // Sincronización automática de parcelas locales pendientes al recuperar conexión a internet
+  useEffect(() => {
+    const intentarSincronizacion = async () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine && sesion?.token && !sesion.esInvitado) {
+        try {
+          await sincronizarParcelasPendientes();
+        } catch (err) {
+          console.warn('[App] Error en sincronización de parcelas pendientes:', err);
+        }
+      }
+    };
+
+    intentarSincronizacion();
+    window.addEventListener('online', intentarSincronizacion);
+    return () => {
+      window.removeEventListener('online', intentarSincronizacion);
+    };
+  }, [sesion]);
 
   // Manejador de Autenticación Exitosa
   const handleAutenticado = (nuevaSesion: SesionUsuario) => {

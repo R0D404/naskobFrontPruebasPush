@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ArrowLeft,
   RotateCcw,
@@ -9,6 +9,9 @@ import {
   Save,
   Check,
   Bookmark,
+  WifiOff,
+  RefreshCw,
+  FolderOpen,
 } from 'lucide-react';
 import { DeclaracionCompleta } from '@/domain/models/declaracion';
 import { Parcela } from '@/domain/models/parcela';
@@ -45,6 +48,8 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
   const [subvista, setSubvista] = useState<SubvistaComparador>('lista');
   const [codigoSeleccionado, setCodigoSeleccionado] = useState<string>('B');
   const [guardadoExitoso, setGuardadoExitoso] = useState<boolean>(false);
+  const [errorRed, setErrorRed] = useState<boolean>(false);
+  const [reintentando, setReintentando] = useState<boolean>(false);
 
   const handleGuardarParcela = () => {
     if (!parcela) return;
@@ -53,7 +58,45 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
     setGuardadoExitoso(true);
   };
 
-  // Carga reactiva de la evaluación mediante el servicio inyectado
+  const ejecutarCargaEvaluacion = useCallback(async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (parcela) {
+        guardarParcelaLocal(parcela, declaracion, 'Pendiente de sincronizar');
+      }
+      setErrorRed(true);
+      setCargando(false);
+      return;
+    }
+
+    setErrorRed(false);
+    setCargando(true);
+
+    try {
+      const resultado = await evaluacionService.ejecutarEvaluacion(
+        parcela?.id_parcela || 'parcela_activa',
+        declaracion
+      );
+      setEvaluacion(resultado);
+      if (resultado.escenarios.length > 0) {
+        setCodigoSeleccionado(resultado.escenarios[0].codigo_escenario);
+      }
+      setErrorRed(false);
+    } catch (error: any) {
+      console.warn('[CompararEscenariosView] Error evaluando escenarios:', error);
+      if (
+        error?.message === 'SIN_CONEXION_RED' ||
+        (typeof navigator !== 'undefined' && !navigator.onLine)
+      ) {
+        if (parcela) {
+          guardarParcelaLocal(parcela, declaracion, 'Pendiente de sincronizar');
+        }
+        setErrorRed(true);
+      }
+    } finally {
+      setCargando(false);
+    }
+  }, [declaracion, parcela]);
+
   useEffect(() => {
     if (evaluacionInicial) {
       setEvaluacion(evaluacionInicial);
@@ -64,31 +107,14 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
       return;
     }
 
-    let montado = true;
-    setCargando(true);
+    ejecutarCargaEvaluacion();
+  }, [evaluacionInicial, ejecutarCargaEvaluacion]);
 
-    evaluacionService
-      .ejecutarEvaluacion(parcela?.id_parcela || 'parcela_activa', declaracion)
-      .then((resultado) => {
-        if (montado) {
-          setEvaluacion(resultado);
-          if (resultado.escenarios.length > 0) {
-            setCodigoSeleccionado(resultado.escenarios[0].codigo_escenario);
-          }
-          setCargando(false);
-        }
-      })
-      .catch((error) => {
-        console.error('Error al generar la evaluación agronómica:', error);
-        if (montado) {
-          setCargando(false);
-        }
-      });
-
-    return () => {
-      montado = false;
-    };
-  }, [declaracion, parcela, evaluacionInicial]);
+  const handleReintentar = async () => {
+    setReintentando(true);
+    await ejecutarCargaEvaluacion();
+    setReintentando(false);
+  };
 
   const handleVerDetalle = (codigo: string) => {
     setCodigoSeleccionado(codigo);
@@ -117,6 +143,82 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
         <p className="text-[11px] text-ink-muted mt-1">
           Analizando series históricas e índices para tu parcela
         </p>
+      </div>
+    );
+  }
+
+  if (errorRed) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-cream px-4 text-center overflow-y-auto py-6">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-cream-line shadow-sm p-6 sm:p-8 space-y-5">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto shadow-sm">
+            <WifiOff className="w-7 h-7" />
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="inline-block text-[10px] font-bold tracking-wider text-amber-700 uppercase bg-amber-100/60 px-2.5 py-0.5 rounded-full">
+              Sin Conexión a Internet
+            </span>
+            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
+              Sin conexión de red
+            </h2>
+            <p className="text-xs text-ink-muted leading-relaxed">
+              El trazado de tu parcela se realizó en modo offline y ha quedado guardado en tu dispositivo. Para calcular el análisis climático y las recomendaciones con satélites NASA se requiere conexión a internet.
+            </p>
+          </div>
+
+          {/* Tarjeta de estado de la parcela */}
+          {parcela && (
+            <div className="bg-cream/60 border border-cream-line rounded-xl p-3.5 text-left space-y-1.5">
+              <div className="flex items-center gap-2 text-ok font-bold text-xs">
+                <Check className="w-4 h-4 text-ok" />
+                <span>Parcela guardada en tu teléfono</span>
+              </div>
+              <div className="text-[11px] text-ink-muted space-y-0.5 pl-6">
+                <div>
+                  <strong className="text-ink">Nombre:</strong> {parcela.nombre || 'Parcela Chiapas'}
+                </div>
+                <div>
+                  <strong className="text-ink">Superficie:</strong> {parcela.area_ha?.toFixed(2)} ha
+                </div>
+                <div>
+                  <strong className="text-ink">Estado:</strong> Pendiente de sincronizar al detectar red
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2 pt-2">
+            <button
+              type="button"
+              disabled={reintentando}
+              onClick={handleReintentar}
+              className="w-full py-3 px-4 bg-ink hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm"
+            >
+              <RefreshCw className={`w-4 h-4 ${reintentando ? 'animate-spin' : ''}`} />
+              <span>{reintentando ? 'Comprobando conexión...' : 'Reintentar conexión'}</span>
+            </button>
+
+            {alIrADashboard && (
+              <button
+                type="button"
+                onClick={alIrADashboard}
+                className="w-full py-2.5 px-4 bg-white hover:bg-cream text-ink border border-cream-line rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+              >
+                <FolderOpen className="w-4 h-4 text-ink-muted" />
+                <span>Ver mis parcelas guardadas</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={alReiniciarTodo}
+              className="w-full py-2 text-[11px] font-semibold text-ink-muted hover:text-ink transition-colors"
+            >
+              Volver al mapa
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

@@ -20,6 +20,7 @@ import {
   obtenerParcelasLocales,
   eliminarParcelaLocal,
 } from '@/utils/parcelasStorage';
+import { sincronizarParcelasPendientes } from '@/utils/sincronizadorParcelas';
 
 export interface DashboardParcelasViewProps {
   sesion: SesionUsuario;
@@ -78,14 +79,28 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
     }
 
     try {
+      // Intentar sincronizar primero parcelas offline pendientes
+      await sincronizarParcelasPendientes();
+
       const nube = await apiParcelaAdapter.listarParcelas(sesion.token);
+      // Refrescar locales tras la sincronización
+      const localesActualizados = obtenerParcelasLocales().map((loc) => ({
+        id_parcela: loc.id_parcela,
+        area_ha: loc.area_ha,
+        estado: loc.estado,
+        nombre: loc.nombre,
+        fecha_guardado: loc.fecha_guardado,
+        recomendacion_principal: loc.recomendacion_principal,
+        origen: 'local' as const,
+      }));
+
       // Combinar con locales sin duplicar
-      const idsLocales = new Set(resumenesLocales.map((p) => p.id_parcela));
+      const idsLocales = new Set(localesActualizados.map((p) => p.id_parcela));
       const nubeFiltradas: ParcelaResumen[] = nube
         .filter((p) => !idsLocales.has(p.id_parcela))
         .map((p) => ({ ...p, origen: 'nube' }));
 
-      setParcelas([...resumenesLocales, ...nubeFiltradas]);
+      setParcelas([...localesActualizados, ...nubeFiltradas]);
       setEstaEnLinea(true);
     } catch (err: any) {
       if (err.message === 'OFFLINE_OR_UNREACHABLE') {

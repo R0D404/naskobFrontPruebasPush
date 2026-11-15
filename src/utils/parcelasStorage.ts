@@ -12,6 +12,8 @@ export interface ParcelaGuardada {
   parcela: Parcela;
   declaracion?: DeclaracionCompleta;
   recomendacion_principal?: string;
+  sincronizado?: boolean;
+  id_remoto?: string;
 }
 
 /**
@@ -34,7 +36,9 @@ export function obtenerParcelasLocales(): ParcelaGuardada[] {
 export function guardarParcelaLocal(
   parcela: Parcela,
   declaracion?: DeclaracionCompleta,
-  recomendacion_principal?: string
+  recomendacion_principal?: string,
+  sincronizado: boolean = false,
+  id_remoto?: string
 ): ParcelaGuardada {
   const actuales = obtenerParcelasLocales();
   const fecha = new Date().toISOString();
@@ -43,11 +47,13 @@ export function guardarParcelaLocal(
     id_parcela: parcela.id_parcela,
     nombre: parcela.nombre || `Parcela ${parcela.area_ha.toFixed(2)} ha`,
     area_ha: parcela.area_ha,
-    estado: 'con_declaracion',
+    estado: declaracion ? 'con_declaracion' : 'registrada',
     fecha_guardado: fecha,
     parcela,
     declaracion,
     recomendacion_principal: recomendacion_principal || 'Frijol',
+    sincronizado,
+    id_remoto,
   };
 
   // Reemplazar si ya existía con el mismo id, o agregar al inicio
@@ -61,6 +67,24 @@ export function guardarParcelaLocal(
   }
 
   return nuevaParcela;
+}
+
+/**
+ * Marca una parcela como sincronizada con la base de datos remota
+ */
+export function marcarParcelaComoSincronizada(id_parcela: string, id_remoto: string): void {
+  const actuales = obtenerParcelasLocales();
+  const actualizadas = actuales.map((p) => {
+    if (p.id_parcela === id_parcela) {
+      return { ...p, sincronizado: true, id_remoto };
+    }
+    return p;
+  });
+  try {
+    localStorage.setItem(CLAVE_STORAGE_PARCELAS, JSON.stringify(actualizadas));
+  } catch (err) {
+    console.warn('[parcelasStorage] Error al actualizar estado de sincronización:', err);
+  }
 }
 
 /**

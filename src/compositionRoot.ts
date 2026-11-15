@@ -1,11 +1,11 @@
-import { ParcelaMockRepository } from '@/infrastructure/mock/repositories/ParcelaMockRepository';
 import { ParcelaService } from '@/application/services/ParcelaService';
-import { EvaluacionMockRepository } from '@/infrastructure/mock/repositories/EvaluacionMockRepository';
 import { EvaluacionService } from '@/application/services/EvaluacionService';
+import { ApiParcelaRepository } from '@/infrastructure/repositories/ApiParcelaRepository';
+import { ApiEvaluacionRepository } from '@/infrastructure/repositories/ApiEvaluacionRepository';
 
-// Composition root para inyección de dependencias
-const parcelaRepository = new ParcelaMockRepository();
+// Inyección de dependencias conectada a la API oficial (con fallback offline y modo demo/simulación)
+const parcelaRepository = new ApiParcelaRepository();
 export const parcelaService = new ParcelaService(parcelaRepository);
 
-const evaluacionRepository = new EvaluacionMockRepository();
+const evaluacionRepository = new ApiEvaluacionRepository();
 export const evaluacionService = new EvaluacionService(evaluacionRepository);

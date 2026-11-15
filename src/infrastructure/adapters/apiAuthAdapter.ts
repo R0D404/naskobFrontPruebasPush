@@ -99,10 +99,32 @@ export class ApiAuthAdapter implements AuthPort {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
+          'x-api-key': PWA_API_KEY,
         },
       });
     } catch {
       // Ignorar errores al cerrar sesión si no hay red
+    }
+  }
+
+  /**
+   * DELETE /v1/cuenta
+   * Eliminación definitiva de cuenta y datos del dispositivo.
+   */
+  async eliminarCuenta(token: string): Promise<void> {
+    if (!token || token.startsWith('demo_')) return;
+    const url = `${BASE_URL}/cuenta`;
+
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-api-key': PWA_API_KEY,
+      },
+    });
+
+    if (!response.ok && response.status !== 204 && response.status !== 404) {
+      throw new Error('ERROR_ELIMINAR_CUENTA');
     }
   }
 }
