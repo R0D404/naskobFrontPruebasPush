@@ -10,10 +10,13 @@ import {
   ArrowRight,
   AlertCircle,
   Satellite,
+  RefreshCw,
 } from 'lucide-react';
+import { SesionUsuario } from '@/domain/models/auth';
+import { apiAuthAdapter } from '@/infrastructure/adapters/apiAuthAdapter';
 
 export interface LoginAuthViewProps {
-  alAutenticar: (usuario: { email: string; token: string; esInvitado: boolean }) => void;
+  alAutenticar: (sesion: SesionUsuario) => void;
 }
 
 type ModoAuth = 'login' | 'registro';
@@ -28,7 +31,11 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [mostrarConfirmPassword, setMostrarConfirmPassword] = useState(false);
 
-  // Errores de validación
+  // Estados de carga y error
+  const [cargando, setCargando] = useState<boolean>(false);
+  const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
+
+  // Errores de validación de campos
   const [errorEmail, setErrorEmail] = useState<string | null>(null);
   const [errorPassword, setErrorPassword] = useState<string | null>(null);
   const [errorConfirm, setErrorConfirm] = useState<string | null>(null);
@@ -38,6 +45,7 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
     setErrorEmail(null);
     setErrorPassword(null);
     setErrorConfirm(null);
+    setErrorGeneral(null);
 
     const emailLimpio = email.trim();
     if (!emailLimpio) {
@@ -69,21 +77,43 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
     return valido;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validarFormulario()) return;
 
-    alAutenticar({
-      email: email.trim().toLowerCase(),
-      token: `auth_token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      esInvitado: false,
-    });
+    setCargando(true);
+    setErrorGeneral(null);
+
+    try {
+      const correoLimpio = email.trim().toLowerCase();
+
+      if (modo === 'registro') {
+        // 1. Crear la cuenta en el backend
+        await apiAuthAdapter.crearCuenta({
+          correo: correoLimpio,
+          contrasena: password,
+        });
+      }
+
+      // 2. Iniciar sesión y obtener JWT
+      const sesion = await apiAuthAdapter.iniciarSesion({
+        correo: correoLimpio,
+        contrasena: password,
+      });
+
+      alAutenticar(sesion);
+    } catch (err: any) {
+      setErrorGeneral(err.message || 'Error de autenticación. Intenta nuevamente.');
+    } finally {
+      setCargando(false);
+    }
   };
 
   const handleDemoMode = () => {
     alAutenticar({
-      email: 'invitado@naskob.org',
+      correo: 'productor.demo@naskob.org',
       token: `demo_token_${Date.now()}`,
+      tipo: 'Bearer',
       esInvitado: true,
     });
   };
@@ -93,13 +123,14 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
     setErrorEmail(null);
     setErrorPassword(null);
     setErrorConfirm(null);
+    setErrorGeneral(null);
   };
 
   return (
     <div className="w-full h-full min-h-screen overflow-y-auto bg-cream flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full mx-auto space-y-6 my-auto">
         {/* Card Principal de Bienvenida */}
-        <div className="bg-white rounded-naskob-lg border border-cream-line shadow-sm p-6 sm:p-8 space-y-6">
+        <div className="bg-white rounded-2xl border border-cream-line shadow-sm p-6 sm:p-8 space-y-6">
           {/* Encabezado con Icono y Títulos */}
           <div className="text-center space-y-3">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-ink text-white shadow-md mx-auto relative">
@@ -111,13 +142,13 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
 
             <div className="space-y-1">
               <span className="inline-block text-[10px] font-bold tracking-widest text-ink uppercase bg-ink/5 px-2.5 py-0.5 rounded-full">
-                La Frailesca, Chiapas
+                Estado de Chiapas
               </span>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight">
                 NasKob · Rotación Resiliente
               </h1>
               <p className="text-xs sm:text-sm text-ink-muted leading-relaxed max-w-sm mx-auto">
-                Compara opciones de siembra con datos satelitales de la NASA para tu parcela en La Frailesca.
+                Decisión agronómica y resiliencia climática con datos satelitales de la NASA para productores de Chiapas.
               </p>
             </div>
           </div>
@@ -126,6 +157,7 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
           <div className="grid grid-cols-2 p-1 bg-cream/70 rounded-xl border border-cream-line text-xs font-bold">
             <button
               type="button"
+              disabled={cargando}
               onClick={() => cambiarModo('login')}
               className={`py-2 rounded-lg transition-all ${
                 modo === 'login'
@@ -137,6 +169,7 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
             </button>
             <button
               type="button"
+              disabled={cargando}
               onClick={() => cambiarModo('registro')}
               className={`py-2 rounded-lg transition-all ${
                 modo === 'registro'
@@ -147,6 +180,17 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
               Crear cuenta
             </button>
           </div>
+
+          {/* Alerta de Error General si la API falla */}
+          {errorGeneral && (
+            <div className="p-3.5 bg-terra-bg/60 border border-terra/30 rounded-xl flex items-start gap-2.5 text-terra text-xs font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="font-bold block">No se pudo completar la operación</span>
+                <span>{errorGeneral}</span>
+              </div>
+            </div>
+          )}
 
           {/* Formulario de Captura */}
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -162,10 +206,12 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
                 <input
                   id="email"
                   type="email"
+                  disabled={cargando}
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
                     if (errorEmail) setErrorEmail(null);
+                    if (errorGeneral) setErrorGeneral(null);
                   }}
                   placeholder="ejemplo@productor.mx"
                   className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-xs sm:text-sm text-ink bg-white placeholder-ink-muted/50 focus:outline-none focus:ring-2 transition-all ${
@@ -198,10 +244,12 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
                 <input
                   id="password"
                   type={mostrarPassword ? 'text' : 'password'}
+                  disabled={cargando}
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
                     if (errorPassword) setErrorPassword(null);
+                    if (errorGeneral) setErrorGeneral(null);
                   }}
                   placeholder="••••••••"
                   className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm text-ink bg-white placeholder-ink-muted/50 focus:outline-none focus:ring-2 transition-all ${
@@ -241,10 +289,12 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
                   <input
                     id="confirmPassword"
                     type={mostrarConfirmPassword ? 'text' : 'password'}
+                    disabled={cargando}
                     value={confirmPassword}
                     onChange={(e) => {
                       setConfirmPassword(e.target.value);
                       if (errorConfirm) setErrorConfirm(null);
+                      if (errorGeneral) setErrorGeneral(null);
                     }}
                     placeholder="Repite tu contraseña"
                     className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm text-ink bg-white placeholder-ink-muted/50 focus:outline-none focus:ring-2 transition-all ${
@@ -279,10 +329,20 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
             {/* Botón Principal de Submit */}
             <button
               type="submit"
-              className="w-full py-3.5 px-4 rounded-xl text-sm font-bold bg-ink text-white hover:bg-ink-light active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-md"
+              disabled={cargando}
+              className="w-full py-3.5 px-4 rounded-xl text-sm font-bold bg-ink text-white hover:bg-ink-light active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <span>{modo === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}</span>
-              <ArrowRight className="w-4 h-4" />
+              {cargando ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-maize" />
+                  <span>Conectando con el servidor...</span>
+                </>
+              ) : (
+                <>
+                  <span>{modo === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
 
@@ -297,6 +357,7 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
           {/* Acceso Directo para Evaluación / Demo (Imprescindible) */}
           <button
             type="button"
+            disabled={cargando}
             onClick={handleDemoMode}
             className="w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold bg-maize/20 hover:bg-maize/30 text-ink border-2 border-maize active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-sm group"
           >
@@ -313,7 +374,7 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
         </div>
 
         {/* Card Informativa de Privacidad */}
-        <div className="bg-ok-bg/50 border border-ok/20 rounded-naskob p-4 flex items-start gap-3 shadow-sm">
+        <div className="bg-ok-bg/50 border border-ok/20 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
           <div className="w-8 h-8 rounded-lg bg-ok-bg text-ok flex items-center justify-center shrink-0 mt-0.5">
             <ShieldCheck className="w-5 h-5 text-ok" />
           </div>

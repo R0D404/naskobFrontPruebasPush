@@ -8,6 +8,12 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: true,
+    proxy: {
+      '/v1': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      }
+    },
     watch: {
       ignored: ['**/google-cloud-sdk/**', '**/node_modules/**', '**/.git/**']
     }
