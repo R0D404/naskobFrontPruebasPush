@@ -34,6 +34,7 @@ import {
 } from '../utils/mapStorage';
 import { obtenerParcelasLocales } from '../utils/parcelasStorage';
 import { GestorMapaOffline } from './GestorMapaOffline';
+import { ordenarVerticesPoligono } from '../domain/rules/parcelaRules';
 
 /**
  * Fuente PMTiles remota para cuando hay conexión a internet disponible.
@@ -504,7 +505,8 @@ export const MapaParcelaNaskob: React.FC<Props> = ({
 
       // 2. Si hay 3 o más puntos, formar el polígono cerrado y su centroide para la NASA
       if (vertices.length >= 3) {
-        const anilloCerrado: [number, number][] = [...vertices, vertices[0]];
+        const verticesOrdenados = ordenarVerticesPoligono(vertices);
+        const anilloCerrado: [number, number][] = [...verticesOrdenados, verticesOrdenados[0]];
         const poligono = turf.polygon([anilloCerrado], { tipo: 'poligono' });
         features.push(poligono);
 
@@ -834,7 +836,8 @@ export const MapaParcelaNaskob: React.FC<Props> = ({
   const analisisGeoespacial = useMemo(() => {
     if (vertices.length < 3) return null;
 
-    const anilloCerrado: [number, number][] = [...vertices, vertices[0]];
+    const verticesOrdenados = ordenarVerticesPoligono(vertices);
+    const anilloCerrado: [number, number][] = [...verticesOrdenados, verticesOrdenados[0]];
     const poligono = turf.polygon([anilloCerrado]);
     const lineaPerimetro = turf.lineString(anilloCerrado);
 
@@ -867,6 +870,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({
     const perfilNasa = filtrarDatosNasaPorUbicacion(longitud, latitud);
 
     return {
+      verticesOrdenados,
       anilloCerrado,
       areaMetrosCuadrados,
       areaHectareas,
@@ -903,7 +907,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({
       nombre: nombreFinal,
       modoCaptura,
       modoMapaUsado: modoVista,
-      verticesWGS84: vertices,
+      verticesWGS84: analisisGeoespacial.verticesOrdenados,
       geometriaGeoJSON: {
         type: 'Feature',
         geometry: {
