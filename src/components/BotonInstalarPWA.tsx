@@ -86,11 +86,12 @@ export function BotonInstalarPWA() {
       <button
         type="button"
         onClick={handleClickInstalar}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-ok hover:bg-ok-hover active:scale-95 transition-all shadow-sm"
+        className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-ok hover:bg-ok-hover active:scale-95 transition-all shadow-sm"
         title="Descargar e instalar NasKob como aplicación PWA offline"
       >
         <Download className="w-4 h-4 animate-bounce" />
-        <span>Descargar PWA</span>
+        <span className="hidden sm:inline">Descargar PWA</span>
+        <span className="sm:hidden">Instalar</span>
       </button>
 
       {/* Modal Guía de Instalación para móviles / iOS / navegadores */}
