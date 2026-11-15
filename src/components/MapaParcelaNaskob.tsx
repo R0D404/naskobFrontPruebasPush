@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
-import { Protocol } from 'pmtiles';
+import { Protocol, PMTiles, FetchSource } from 'pmtiles';
 import * as turf from '@turf/turf';
 import {
   Navigation,
@@ -25,6 +25,50 @@ import {
   filtrarDatosNasaPorUbicacion,
   distanciaHaversineMetros,
 } from '../data/perfilesNasaFrailesca';
+import {
+  MapKey,
+  BlobSource,
+  getStoredMapBlob,
+} from '../utils/mapStorage';
+import { GestorMapaOffline } from './GestorMapaOffline';
+
+/**
+ * Fuente PMTiles que redirige al archivo en el servidor con captura silenciosa de errores
+ * si el dispositivo se encuentra sin conexión o en zona rural.
+ */
+class NamedFetchSource {
+  private fetchSource: FetchSource;
+  constructor(private key: string, url: string) {
+    this.fetchSource = new FetchSource(url);
+  }
+  getKey() {
+    return this.key;
+  }
+  async getBytes(offset: number, length: number, signal?: AbortSignal, etag?: string) {
+    try {
+      return await this.fetchSource.getBytes(offset, length, signal, etag);
+    } catch {
+      return { data: new ArrayBuffer(0) };
+    }
+  }
+}
+
+// Instancia persistente del protocolo PMTiles
+const pmtilesProtocol = new Protocol();
+try {
+  maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile);
+} catch {
+  // Ya registrado
+}
+
+if (typeof window !== 'undefined') {
+  pmtilesProtocol.add(
+    new PMTiles(new NamedFetchSource('frailesca', `${window.location.origin}/maps/frailesca.pmtiles`))
+  );
+  pmtilesProtocol.add(
+    new PMTiles(new NamedFetchSource('chiapas', `${window.location.origin}/maps/chiapas.pmtiles`))
+  );
+}
 
 // Centro por defecto en La Frailesca, Chiapas (Villaflores / Villa Corzo) [lng, lat]
 const CENTRO_FRAILESCA_WGS84: [number, number] = [-93.2683, 16.2336];
@@ -85,15 +129,35 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
     verticesRef.current = vertices;
   }, [vertices]);
 
+  // Almacenamiento y registro de mapas offline en memoria local
+  const handleMapLoaded = useCallback((key: MapKey, blob: Blob) => {
+    const source = new BlobSource(key, blob);
+    pmtilesProtocol.add(new PMTiles(source));
+    console.log(`[MapaParcelaNaskob] Mapa ${key} cargado desde Blob local (${(blob.size / (1024 * 1024)).toFixed(1)} MB).`);
+    if (mapRef.current) {
+      mapRef.current.triggerRepaint();
+    }
+  }, []);
+
   // ---------------------------------------------------------------------------
   // 1. REGISTRO DEL PROTOCOLO PMTILES OFFLINE Y CREACIÓN DEL MAPA UNIFICADO
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    // Registrar protocolo pmtiles:// en MapLibre para leer public/maps/frailesca.pmtiles y chiapas.pmtiles
-    const protocol = new Protocol();
-    maplibregl.addProtocol('pmtiles', protocol.tile);
+    // Cargar inmediatamente desde almacenamiento local si ya fueron descargados
+    getStoredMapBlob('frailesca').then((blob) => {
+      if (blob) {
+        pmtilesProtocol.add(new PMTiles(new BlobSource('frailesca', blob)));
+        if (mapRef.current) mapRef.current.triggerRepaint();
+      }
+    });
+    getStoredMapBlob('chiapas').then((blob) => {
+      if (blob) {
+        pmtilesProtocol.add(new PMTiles(new BlobSource('chiapas', blob)));
+        if (mapRef.current) mapRef.current.triggerRepaint();
+      }
+    });
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
@@ -106,22 +170,19 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
       attributionControl: false,
       style: {
         version: 8,
+        glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
         sources: {
           // 1. Mapa Vectorial Offline Estatal (chiapas.pmtiles: zoom 0 a 14)
           'chiapas-pmtiles': {
             type: 'vector',
-            url: typeof window !== 'undefined'
-              ? `pmtiles://${window.location.origin}/maps/chiapas.pmtiles`
-              : 'pmtiles:///maps/chiapas.pmtiles',
+            url: 'pmtiles://chiapas',
             minzoom: 0,
             maxzoom: 14,
           },
           // 2. Mapa Vectorial Offline Regional Alta Detalle (frailesca.pmtiles: zoom 0 a 15)
           'frailesca-pmtiles': {
             type: 'vector',
-            url: typeof window !== 'undefined'
-              ? `pmtiles://${window.location.origin}/maps/frailesca.pmtiles`
-              : 'pmtiles:///maps/frailesca.pmtiles',
+            url: 'pmtiles://frailesca',
             minzoom: 0,
             maxzoom: 15,
           },
@@ -226,6 +287,17 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
             paint: {
               'line-color': '#8c7a6b',
               'line-width': 1.2,
+              'line-dasharray': [3, 2],
+            },
+          },
+          {
+            id: 'vec-frailesca-boundaries',
+            type: 'line',
+            source: 'frailesca-pmtiles',
+            'source-layer': 'boundaries',
+            paint: {
+              'line-color': '#7a6a5b',
+              'line-width': 1.5,
               'line-dasharray': [3, 2],
             },
           },
@@ -446,7 +518,6 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
       }
       map.remove();
       mapRef.current = null;
-      maplibregl.removeProtocol('pmtiles');
     };
   }, []);
 
@@ -903,6 +974,9 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
 
   return (
     <div className="w-full flex flex-col gap-4">
+      {/* Gestor y Monitor de Almacenamiento de Mapas Offline */}
+      <GestorMapaOffline onMapLoaded={handleMapLoaded} />
+
       {/* Barra superior de selección de Mapa (Vectorial Offline vs Satelital) y GPS */}
       <div className="bg-white border border-cream-line rounded-naskob p-3 shadow-sm flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">

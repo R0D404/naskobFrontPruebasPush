@@ -13,9 +13,6 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      devOptions: {
-        enabled: true
-      },
       includeAssets: ['favicon.ico', 'favicon.svg', 'robots.txt', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
         name: 'NasKob · Rotación Resiliente',
@@ -41,23 +38,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
-        runtimeCaching: [
-          {
-            urlPattern: /\.pmtiles$/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'pmtiles-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 año
-              },
-              cacheableResponse: {
-                statuses: [200, 206],
-              },
-              rangeRequests: true, // Crucial: habilita RangeRequestsPlugin de Workbox para respuestas 206 parciales
-            },
-          },
-        ],
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/maps\/.*/],
       }
     })
   ],
