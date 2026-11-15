@@ -420,7 +420,14 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
     });
     resizeObserver.observe(mapContainerRef.current);
 
-    // Evento de clic unificado: usa e.lngLat nativo de MapLibre (inmune al nivel de zoom y modo de mapa)
+    map.on('error', (e) => {
+      console.error('[MapLibre error]', e.error || e.message || e);
+    });
+
+    map.on('load', () => {
+      console.log('[MapLibre cargado con éxito]');
+    });
+
     map.on('click', (e: maplibregl.MapMouseEvent) => {
       if (caminandoActivoRef.current) return;
 
