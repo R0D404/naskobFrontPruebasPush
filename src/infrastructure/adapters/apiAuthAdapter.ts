@@ -1,7 +1,7 @@
 import { AuthPort } from '@/domain/ports/AuthPort';
 import { SesionUsuario, CredencialesLogin, RegistroCuenta } from '@/domain/models/auth';
 
-const rawBase = (import.meta.env.VITE_API_BASE_URL || '/v1').trim().replace(/\/$/, '');
+const rawBase = (import.meta.env.VITE_API_BASE_URL || 'https://naskob.duckdns.org/v1').trim().replace(/\/$/, '');
 const BASE_URL = rawBase.endsWith('/v1') ? rawBase : `${rawBase}/v1`;
 const PWA_API_KEY = (import.meta.env.VITE_PWA_API_KEY || 'aSqiDA7E0XyW8TSTVxvYaCo7OxvHbPR1qfEe9Qp4e2I').trim();
 
