@@ -52,7 +52,7 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
     };
   }, []);
 
-  // Verificar mapas existentes al inicio y auto-descargar Frailesca si es necesario
+  // Verificar mapas existentes al inicio y auto-descargar Frailesca y Chiapas si es necesario
   useEffect(() => {
     let activo = true;
 
@@ -79,9 +79,15 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
           }
         }
 
-        // Si Frailesca no está guardado y hay internet, auto-descargarlo en segundo plano
+        // 1. Si Frailesca no está guardado y hay internet, descargarlo primero (rápido 2s)
         if (!tieneFrailesca && navigator.onLine) {
-          ejecutarDescarga('frailesca');
+          await ejecutarDescarga('frailesca');
+        }
+
+        // 2. Si Chiapas completo no está guardado y hay internet, auto-descargarlo para cobertura estatal total
+        const tieneChiapasActualizado = await isMapStored('chiapas');
+        if (!tieneChiapasActualizado && navigator.onLine && activo) {
+          await ejecutarDescarga('chiapas');
         }
       } catch (err) {
         console.warn('[GestorMapaOffline] Error al verificar mapas:', err);
@@ -138,16 +144,29 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
       {/* Barra de Estado Resumida */}
       <div className="p-2.5 sm:p-3 flex items-center justify-between flex-wrap gap-2 bg-[#f8faf9]">
         <div className="flex items-center gap-2">
-          {frailescaListo ? (
+          {chiapasListo ? (
             <div className="flex items-center gap-1.5 text-ok font-bold">
               <CheckCircle2 className="w-4 h-4 text-ok shrink-0" />
-              <span>Mapa Offline La Frailesca: Listo (4.7 MB en dispositivo)</span>
+              <span>Todo Chiapas Offline: Listo (54 MB en dispositivo · Estado completo)</span>
+            </div>
+          ) : descargando === 'chiapas' ? (
+            <div className="flex items-center gap-1.5 text-navy font-bold">
+              <Loader2 className="w-4 h-4 animate-spin text-navy shrink-0" />
+              <span>
+                Guardando mapa de Todo Chiapas ({progresoDescarga?.percent || 0}% · {progresoDescarga?.loadedMb} MB /{' '}
+                {progresoDescarga?.totalMb})
+              </span>
+            </div>
+          ) : frailescaListo ? (
+            <div className="flex items-center gap-1.5 text-amber-800 font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>La Frailesca lista (4.7 MB) · Chiapas completo pendiente</span>
             </div>
           ) : descargando === 'frailesca' ? (
             <div className="flex items-center gap-1.5 text-navy font-bold">
               <Loader2 className="w-4 h-4 animate-spin text-navy shrink-0" />
               <span>
-                Guardando mapa offline La Frailesca ({progresoDescarga?.percent || 0}% · {progresoDescarga?.loadedMb} MB /{' '}
+                Guardando mapa regional La Frailesca ({progresoDescarga?.percent || 0}% · {progresoDescarga?.loadedMb} MB /{' '}
                 {progresoDescarga?.totalMb})
               </span>
             </div>
@@ -156,8 +175,8 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
                 {online
-                  ? 'Mapa offline no guardado todavía'
-                  : 'Sin conexión · Requiere internet una vez para guardar el mapa'}
+                  ? 'Mapas offline no guardados todavía'
+                  : 'Sin conexión · Requiere internet una vez para guardar los mapas'}
               </span>
             </div>
           )}
@@ -174,12 +193,12 @@ export const GestorMapaOffline: React.FC<Props> = ({ onMapLoaded }) => {
         </div>
 
         <div className="flex items-center gap-2">
-          {!frailescaListo && !descargando && online && (
+          {!chiapasListo && !descargando && online && (
             <button
-              onClick={() => ejecutarDescarga('frailesca')}
-              className="px-2.5 py-1 rounded bg-ink text-white font-bold hover:bg-ink-light flex items-center gap-1 transition-colors cursor-pointer"
+              onClick={() => ejecutarDescarga('chiapas')}
+              className="px-2.5 py-1 rounded bg-ok text-white font-bold hover:bg-ok-light flex items-center gap-1 transition-colors cursor-pointer text-[11px]"
             >
-              <Download className="w-3.5 h-3.5" /> Descargar 4.7 MB
+              <Download className="w-3.5 h-3.5" /> Descargar Todo Chiapas (54 MB)
             </button>
           )}
 

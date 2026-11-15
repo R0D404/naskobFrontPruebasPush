@@ -115,6 +115,10 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
     verticesRef.current = vertices;
   }, [vertices]);
 
+  // Referencia para preservar el centro y zoom del usuario entre recargas
+  const ultimoCentroRef = useRef<[number, number]>(CENTRO_FRAILESCA_WGS84);
+  const ultimoZoomRef = useRef<number>(14);
+
   // Estado de error si no hay mapa descargado y se intenta usar offline
   const [errorMapaOffline, setErrorMapaOffline] = useState<string | null>(null);
 
@@ -124,6 +128,10 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
   const iniciarMapa = useCallback(async () => {
     if (!mapContainerRef.current) return;
     if (mapRef.current) {
+      try {
+        ultimoCentroRef.current = [mapRef.current.getCenter().lng, mapRef.current.getCenter().lat];
+        ultimoZoomRef.current = mapRef.current.getZoom();
+      } catch {}
       mapRef.current.remove();
       mapRef.current = null;
     }
@@ -141,24 +149,27 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
       isOnline,
     });
 
-    // 2. Si no hay mapa de La Frailesca en almacenamiento local y no hay internet:
-    if (!frailescaBlob && !isOnline) {
+    // 2. Si no hay ningún mapa guardado localmente y no hay internet:
+    if (!frailescaBlob && !chiapasBlob && !isOnline) {
       setErrorMapaOffline(
-        'El mapa base de La Frailesca aún no se ha guardado en este teléfono. Conéctate a internet por 2 segundos para descargarlo automáticamente.'
+        'Los mapas offline de Chiapas aún no se han guardado en este teléfono. Conéctate a internet por unos segundos para descargarlos automáticamente.'
       );
       return;
     }
 
     // 3. Registrar frailesca en el protocolo PMTiles (BlobSource local si existe, o FetchSource si hay red)
+    let tieneFrailesca = false;
     if (frailescaBlob) {
       pmtilesProtocol.add(new PMTiles(new BlobSource('frailesca', frailescaBlob)));
+      tieneFrailesca = true;
     } else if (isOnline && typeof window !== 'undefined') {
       pmtilesProtocol.add(
         new PMTiles(new NamedFetchSource('frailesca', `${window.location.origin}/maps/frailesca.pmtiles`))
       );
+      tieneFrailesca = true;
     }
 
-    // 4. Registrar chiapas SOLO si el blob existe o si hay conexión activa
+    // 4. Registrar chiapas en el protocolo PMTiles (BlobSource local si existe, o FetchSource si hay red)
     let tieneChiapas = false;
     if (chiapasBlob) {
       pmtilesProtocol.add(new PMTiles(new BlobSource('chiapas', chiapasBlob)));
@@ -170,14 +181,8 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
       tieneChiapas = true;
     }
 
-    // 5. Construir fuentes dinámicas (sin dependencias fantasma que fallen offline)
+    // 5. Construir fuentes dinámicas
     const sources: Record<string, any> = {
-      'frailesca-pmtiles': {
-        type: 'vector',
-        url: 'pmtiles://frailesca',
-        minzoom: 0,
-        maxzoom: 15,
-      },
       'satelital-esri': {
         type: 'raster',
         tiles: [
@@ -205,7 +210,16 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
       };
     }
 
-    // 6. Construir capas dinámicas (Chiapas abajo si está disponible, La Frailesca de alta resolución arriba)
+    if (tieneFrailesca) {
+      sources['frailesca-pmtiles'] = {
+        type: 'vector',
+        url: 'pmtiles://frailesca',
+        minzoom: 0,
+        maxzoom: 15,
+      };
+    }
+
+    // 6. Construir capas dinámicas (Chiapas cubre todo el estado; Frailesca añade sobrecapa de alta resolución)
     const layers: any[] = [
       {
         id: 'fondo-base',
@@ -214,6 +228,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
       },
     ];
 
+    // Capas estatales de Chiapas (Tuxtla, San Cristóbal, Palenque, Tapachula, etc.)
     if (tieneChiapas) {
       layers.push(
         {
@@ -245,6 +260,16 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
           paint: { 'line-color': '#8c7a6b', 'line-width': 1.2, 'line-dasharray': [3, 2] },
         },
         {
+          id: 'vec-chiapas-roads-casing',
+          type: 'line',
+          source: 'chiapas-pmtiles',
+          'source-layer': 'roads',
+          paint: {
+            'line-color': '#b0a695',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.0, 12, 2.5, 15, 4.5, 20, 10],
+          },
+        },
+        {
           id: 'vec-chiapas-roads',
           type: 'line',
           source: 'chiapas-pmtiles',
@@ -253,72 +278,88 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
             'line-color': '#ffffff',
             'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.8, 14, 2.5, 19, 6],
           },
+        },
+        {
+          id: 'vec-chiapas-buildings',
+          type: 'fill',
+          source: 'chiapas-pmtiles',
+          'source-layer': 'buildings',
+          paint: {
+            'fill-color': '#d8cfc2',
+            'fill-outline-color': '#b8ad9e',
+            'fill-opacity': 0.85,
+          },
         }
       );
     }
 
-    // Capas locales de alta resolución de La Frailesca (100% autónomas)
+    // Capas regionales de alta resolución de La Frailesca
+    if (tieneFrailesca) {
+      layers.push(
+        {
+          id: 'vec-frailesca-earth',
+          type: 'fill',
+          source: 'frailesca-pmtiles',
+          'source-layer': 'earth',
+          paint: { 'fill-color': '#eef2eb' },
+        },
+        {
+          id: 'vec-frailesca-landuse',
+          type: 'fill',
+          source: 'frailesca-pmtiles',
+          'source-layer': 'landuse',
+          paint: { 'fill-color': '#d2e5c8', 'fill-opacity': 0.75 },
+        },
+        {
+          id: 'vec-frailesca-water',
+          type: 'fill',
+          source: 'frailesca-pmtiles',
+          'source-layer': 'water',
+          paint: { 'fill-color': '#78b7e6' },
+        },
+        {
+          id: 'vec-frailesca-boundaries',
+          type: 'line',
+          source: 'frailesca-pmtiles',
+          'source-layer': 'boundaries',
+          paint: { 'line-color': '#7a6a5b', 'line-width': 1.5, 'line-dasharray': [3, 2] },
+        },
+        {
+          id: 'vec-frailesca-roads-casing',
+          type: 'line',
+          source: 'frailesca-pmtiles',
+          'source-layer': 'roads',
+          paint: {
+            'line-color': '#b0a695',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.5, 15, 4.5, 20, 10],
+          },
+        },
+        {
+          id: 'vec-frailesca-roads',
+          type: 'line',
+          source: 'frailesca-pmtiles',
+          'source-layer': 'roads',
+          paint: {
+            'line-color': '#fffcf5',
+            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.0, 15, 3.0, 20, 7.5],
+          },
+        },
+        {
+          id: 'vec-frailesca-buildings',
+          type: 'fill',
+          source: 'frailesca-pmtiles',
+          'source-layer': 'buildings',
+          paint: {
+            'fill-color': '#d8cfc2',
+            'fill-outline-color': '#b8ad9e',
+            'fill-opacity': 0.85,
+          },
+        }
+      );
+    }
+
+    // Capa Satelital Raster Online
     layers.push(
-      {
-        id: 'vec-frailesca-earth',
-        type: 'fill',
-        source: 'frailesca-pmtiles',
-        'source-layer': 'earth',
-        paint: { 'fill-color': '#eef2eb' },
-      },
-      {
-        id: 'vec-frailesca-landuse',
-        type: 'fill',
-        source: 'frailesca-pmtiles',
-        'source-layer': 'landuse',
-        paint: { 'fill-color': '#d2e5c8', 'fill-opacity': 0.75 },
-      },
-      {
-        id: 'vec-frailesca-water',
-        type: 'fill',
-        source: 'frailesca-pmtiles',
-        'source-layer': 'water',
-        paint: { 'fill-color': '#78b7e6' },
-      },
-      {
-        id: 'vec-frailesca-boundaries',
-        type: 'line',
-        source: 'frailesca-pmtiles',
-        'source-layer': 'boundaries',
-        paint: { 'line-color': '#7a6a5b', 'line-width': 1.5, 'line-dasharray': [3, 2] },
-      },
-      {
-        id: 'vec-frailesca-roads-casing',
-        type: 'line',
-        source: 'frailesca-pmtiles',
-        'source-layer': 'roads',
-        paint: {
-          'line-color': '#b0a695',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.5, 15, 4.5, 20, 10],
-        },
-      },
-      {
-        id: 'vec-frailesca-roads',
-        type: 'line',
-        source: 'frailesca-pmtiles',
-        'source-layer': 'roads',
-        paint: {
-          'line-color': '#fffcf5',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.0, 15, 3.0, 20, 7.5],
-        },
-      },
-      {
-        id: 'vec-frailesca-buildings',
-        type: 'fill',
-        source: 'frailesca-pmtiles',
-        'source-layer': 'buildings',
-        paint: {
-          'fill-color': '#d8cfc2',
-          'fill-outline-color': '#b8ad9e',
-          'fill-opacity': 0.85,
-        },
-      },
-      // Capa Satelital Raster Online
       {
         id: 'capa-satelital-raster',
         type: 'raster',
@@ -329,7 +370,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
       {
         id: 'vec-hibrido-roads',
         type: 'line',
-        source: 'frailesca-pmtiles',
+        source: tieneChiapas ? 'chiapas-pmtiles' : 'frailesca-pmtiles',
         'source-layer': 'roads',
         paint: {
           'line-color': '#f0b323',
@@ -407,8 +448,8 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      center: CENTRO_FRAILESCA_WGS84,
-      zoom: 14,
+      center: ultimoCentroRef.current,
+      zoom: ultimoZoomRef.current,
       minZoom: 6,
       maxZoom: 21,
       attributionControl: false,
