@@ -320,7 +320,7 @@ export const TarjetaEscenarioDetalle: React.FC<TarjetaEscenarioDetalleProps> = (
           className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs shadow-md hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>← Volver a Propuestas</span>
+          <span>Volver a Propuestas</span>
         </button>
       </div>
     </div>
