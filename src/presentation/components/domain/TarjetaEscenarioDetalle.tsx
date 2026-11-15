@@ -120,7 +120,7 @@ export const TarjetaEscenarioDetalle: React.FC<TarjetaEscenarioDetalleProps> = (
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            {escenario.subtitulo && (
+            {escenario.subtitulo && !escenario.subtitulo.toLowerCase().includes('agroecológica') && (
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">
                 {escenario.subtitulo}
               </span>

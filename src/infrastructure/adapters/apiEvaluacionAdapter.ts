@@ -32,19 +32,52 @@ function construirPayloadDeclaracion(declaracion: DeclaracionCompleta) {
 }
 
 function mapearRespuestaEvaluacion(data: any, idParcelaFallback: string): Evaluacion {
-  const escenariosMapeados: EscenarioResultado[] = (data.escenarios || []).map((esc: any) => {
+  const escenariosRaw = data.escenarios || [];
+
+  // Determinar cuál es el escenario recomendado (sólo 1):
+  // 1. Si el backend envió explícitamente tipo_badge === 'recomendado' o badge === 'Recomendado'
+  // 2. Si no, aquel que tenga código 'B' (convención usual en rotaciones)
+  // 3. Si no, el primer escenario alternativo (no línea base) con mejor puntaje
+  let codigoRecomendado = '';
+  const explicitRec = escenariosRaw.find(
+    (e: any) => !e.es_linea_base && (e.tipo_badge === 'recomendado' || e.badge === 'Recomendado')
+  );
+  if (explicitRec) {
+    codigoRecomendado = (explicitRec.codigo_escenario || explicitRec.codigo || '').toUpperCase();
+  } else {
+    const fallbackB = escenariosRaw.find(
+      (e: any) => !e.es_linea_base && (e.codigo_escenario || e.codigo || '').toUpperCase() === 'B'
+    );
+    if (fallbackB) {
+      codigoRecomendado = 'B';
+    } else {
+      const alternativos = escenariosRaw.filter((e: any) => !e.es_linea_base);
+      if (alternativos.length > 0) {
+        const mejor = [...alternativos].sort((a: any, b: any) => {
+          const ptA = a.puntaje_mediana ?? a.puntaje_valor ?? 0;
+          const ptB = b.puntaje_mediana ?? b.puntaje_valor ?? 0;
+          return ptB - ptA;
+        })[0];
+        codigoRecomendado = (mejor.codigo_escenario || mejor.codigo || '').toUpperCase();
+      }
+    }
+  }
+
+  const escenariosMapeados: EscenarioResultado[] = escenariosRaw.map((esc: any) => {
     const puntajeBruto = esc.puntaje_mediana ?? esc.puntaje_valor ?? 0;
     const puntaje100 = puntajeBruto <= 1.0 ? Math.round(puntajeBruto * 100) : Math.round(puntajeBruto);
 
     const esLineaBase = Boolean(esc.es_linea_base);
-    const codigo = (esc.codigo_escenario || 'A').toUpperCase();
+    const codigo = (esc.codigo_escenario || esc.codigo || 'A').toUpperCase();
+    const esRecomendado = !esLineaBase && codigo === codigoRecomendado;
 
+    // Se remueve el subtítulo genérico de rotación ('Opción agroecológica...') a petición de diseño
     const subtitulo = esLineaBase
       ? 'Lo que vienes sembrando. Conoces el cultivo y el mercado.'
-      : 'Opción agroecológica para rotar y proteger el suelo de tu parcela.';
+      : '';
 
-    const badge = esLineaBase ? 'Línea Base' : esc.orden_visual === 1 || codigo === 'B' ? 'Recomendado' : 'Rotación';
-    const tipoBadge = esLineaBase ? 'linea_base' : esc.orden_visual === 1 || codigo === 'B' ? 'recomendado' : 'alternativa';
+    const badge = esLineaBase ? 'Línea Base' : esRecomendado ? 'Recomendado' : 'Rotación';
+    const tipoBadge = esLineaBase ? 'linea_base' : esRecomendado ? 'recomendado' : 'alternativa';
 
     const tarjeta5 = esc.tarjeta_5_partes || {
       por_que_se_sugirio: 'Evaluación agroclimática multicriterio sobre la serie histórica NASA 2001-2025.',
@@ -56,7 +89,7 @@ function mapearRespuestaEvaluacion(data: any, idParcelaFallback: string): Evalua
 
     return {
       codigo_escenario: codigo as any,
-      orden_visual: esc.orden_visual ?? 1,
+      orden_visual: esLineaBase ? 1 : esRecomendado ? 2 : esc.orden_visual ?? 3,
       nombre: esc.nombre || `Opción ${codigo}: ${esc.cultivo || 'Cultivo'}`,
       es_linea_base: esLineaBase,
       secuencia_cultivos: esc.secuencia_cultivos || [],
@@ -86,6 +119,24 @@ function mapearRespuestaEvaluacion(data: any, idParcelaFallback: string): Evalua
     })
   );
 
+  // Ordenamiento de cards:
+  // 1° Posición: Continuidad (Línea Base)
+  // 2° Posición: Recomendada (debajo de continuidad)
+  // 3°+ Posición: Resto de alternativas de rotación
+  const escenariosOrdenados = [...escenariosMapeados].sort((a, b) => {
+    if (a.es_linea_base && !b.es_linea_base) return -1;
+    if (!a.es_linea_base && b.es_linea_base) return 1;
+    if (a.es_linea_base && b.es_linea_base) return 0;
+
+    const aEsRecomendado = a.tipo_badge === 'recomendado' || a.badge === 'Recomendado';
+    const bEsRecomendado = b.tipo_badge === 'recomendado' || b.badge === 'Recomendado';
+
+    if (aEsRecomendado && !bEsRecomendado) return -1;
+    if (!aEsRecomendado && bEsRecomendado) return 1;
+
+    return 0;
+  });
+
   return {
     id_evaluacion: data.id_evaluacion || `eval_${Date.now()}`,
     id_parcela: data.id_parcela || idParcelaFallback,
@@ -93,7 +144,7 @@ function mapearRespuestaEvaluacion(data: any, idParcelaFallback: string): Evalua
     generado_utc: data.generado_utc || new Date().toISOString(),
     vigencia_hasta: data.vigencia_hasta || new Date(Date.now() + 30 * 86400000).toISOString(),
     pesos_usados: data.pesos_usados || { c_agua: 0.25, c_riesgo: 0.25, c_suelo: 0.25, c_apt: 0.25 },
-    escenarios: escenariosMapeados,
+    escenarios: escenariosOrdenados,
     escenarios_descartados: descartadosMapeados,
   };
 }

@@ -274,75 +274,81 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
 
             {/* Mapeo dinámico de escenarios desde la API */}
             <div className="space-y-3 pt-1">
-              {evaluacion.escenarios.map((item) => {
-                const esRecomendado =
-                  item.tipo_badge === 'recomendado' ||
-                  (!item.es_linea_base && item.orden_visual === 1);
-                const esLineaBase = item.es_linea_base;
+              {(() => {
+                const escenariosParaMostrar = [...evaluacion.escenarios].sort((a, b) => {
+                  if (a.es_linea_base && !b.es_linea_base) return -1;
+                  if (!a.es_linea_base && b.es_linea_base) return 1;
+                  if (a.es_linea_base && b.es_linea_base) return 0;
 
-                return (
-                  <div
-                    key={item.codigo_escenario}
-                    onClick={() => handleVerDetalle(item.codigo_escenario)}
-                    className={`bg-white rounded-2xl p-4 transition-all cursor-pointer hover:shadow-md active:scale-[0.99] space-y-2.5 ${
-                      esRecomendado
-                        ? 'border-2 border-emerald-500 shadow-sm'
-                        : esLineaBase
-                        ? 'border border-slate-300 shadow-xs'
-                        : 'border border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                      <div>
-                        {esRecomendado ? (
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-                              {item.badge || 'Recomendado'}
-                            </span>
-                          </div>
-                        ) : (
-                          item.subtitulo && (
-                            <span
-                              className={`text-[10px] font-semibold uppercase tracking-wider block mb-0.5 ${
-                                esLineaBase ? 'text-blue-700' : 'text-slate-400'
-                              }`}
-                            >
-                              {item.subtitulo}
-                            </span>
-                          )
+                  const aRec = a.tipo_badge === 'recomendado' || a.badge === 'Recomendado';
+                  const bRec = b.tipo_badge === 'recomendado' || b.badge === 'Recomendado';
+
+                  if (aRec && !bRec) return -1;
+                  if (!aRec && bRec) return 1;
+
+                  return 0;
+                });
+
+                return escenariosParaMostrar.map((item) => {
+                  const esRecomendado =
+                    item.tipo_badge === 'recomendado' ||
+                    item.badge === 'Recomendado';
+                  const esLineaBase = item.es_linea_base;
+
+                  return (
+                    <div
+                      key={item.codigo_escenario}
+                      onClick={() => handleVerDetalle(item.codigo_escenario)}
+                      className={`bg-white rounded-2xl p-4 transition-all cursor-pointer hover:shadow-md active:scale-[0.99] space-y-2.5 ${
+                        esRecomendado
+                          ? 'border-2 border-emerald-500 shadow-sm'
+                          : esLineaBase
+                          ? 'border border-slate-300 shadow-xs'
+                          : 'border border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          {esRecomendado && (
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                                {item.badge || 'Recomendado'}
+                              </span>
+                            </div>
+                          )}
+                          <h2 className="text-lg font-extrabold text-slate-900 leading-tight">
+                            {item.nombre}
+                          </h2>
+                        </div>
+
+                        {item.badge && (
+                          <span
+                            className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full shrink-0 ${
+                              esRecomendado
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {item.badge}
+                          </span>
                         )}
-                        <h2 className="text-lg font-extrabold text-slate-900 leading-tight">
-                          {item.nombre}
-                        </h2>
                       </div>
 
-                      {item.badge && (
-                        <span
-                          className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full shrink-0 ${
-                            esRecomendado
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-slate-100 text-slate-700'
-                          }`}
-                        >
-                          {item.badge}
+                      {/* Resumen dinámico extraído de la tarjeta o resumen del backend */}
+                      <p className="text-xs text-slate-600 leading-snug">
+                        {item.resumen || item.tarjeta_5_partes.por_que_se_sugirio}
+                      </p>
+
+                      <div className="flex justify-end pt-1 border-t border-slate-100">
+                        <span className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1">
+                          {esRecomendado ? 'Ver por qué te conviene →' : 'Ver detalle →'}
                         </span>
-                      )}
+                      </div>
                     </div>
-
-                    {/* Resumen dinámico extraído de la tarjeta o resumen del backend */}
-                    <p className="text-xs text-slate-600 leading-snug">
-                      {item.resumen || item.tarjeta_5_partes.por_que_se_sugirio}
-                    </p>
-
-                    <div className="flex justify-end pt-1 border-t border-slate-100">
-                      <span className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1">
-                        {esRecomendado ? 'Ver por qué te conviene →' : 'Ver detalle →'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
 
             {/* SECCIÓN DINÁMICA DE DESCARTADOS (Filtro RC5 provisto por la API) */}
