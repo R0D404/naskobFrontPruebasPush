@@ -13,6 +13,14 @@
   ],
   "rewrites": [
     {
+      "source": "/v1/:path*",
+      "destination": "https://naskob.duckdns.org/v1/:path*"
+    },
+    {
+      "source": "/v1/(.*)",
+      "destination": "https://naskob.duckdns.org/v1/$1"
+    },
+    {
       "source": "/maps/(.*)",
       "destination": "/maps/$1"
     },

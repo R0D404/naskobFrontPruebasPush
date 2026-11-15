@@ -1,8 +1,21 @@
 import { Evaluacion, EscenarioResultado, EscenarioDescartado } from '@/domain/models/evaluacion';
 import { DeclaracionCompleta } from '@/domain/models/declaracion';
 
-const rawBase = (import.meta.env.VITE_API_BASE_URL || 'https://naskob.duckdns.org/v1').trim().replace(/\/$/, '');
-const BASE_URL = rawBase.endsWith('/v1') ? rawBase : `${rawBase}/v1`;
+function getApiBaseUrl(): string {
+  const envUrl = (import.meta.env.VITE_API_BASE_URL || '/v1').trim();
+  if (
+    !envUrl ||
+    envUrl === '/v1' ||
+    envUrl === '/' ||
+    (typeof window !== 'undefined' && envUrl.includes('duckdns.org') && window.location.hostname.includes('vercel.app'))
+  ) {
+    return '/v1';
+  }
+  const clean = envUrl.replace(/\/$/, '');
+  return clean.endsWith('/v1') ? clean : `${clean}/v1`;
+}
+
+const BASE_URL = getApiBaseUrl();
 const PWA_API_KEY = (import.meta.env.VITE_PWA_API_KEY || 'aSqiDA7E0XyW8TSTVxvYaCo7OxvHbPR1qfEe9Qp4e2I').trim();
 
 function normalizarNombreCultivo(c: string): string {
