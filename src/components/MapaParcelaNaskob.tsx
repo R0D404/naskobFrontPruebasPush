@@ -110,14 +110,18 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
           // 1. Mapa Vectorial Offline Estatal (chiapas.pmtiles: zoom 0 a 14)
           'chiapas-pmtiles': {
             type: 'vector',
-            url: 'pmtiles:///maps/chiapas.pmtiles',
+            url: typeof window !== 'undefined'
+              ? `pmtiles://${window.location.origin}/maps/chiapas.pmtiles`
+              : 'pmtiles:///maps/chiapas.pmtiles',
             minzoom: 0,
             maxzoom: 14,
           },
           // 2. Mapa Vectorial Offline Regional Alta Detalle (frailesca.pmtiles: zoom 0 a 15)
           'frailesca-pmtiles': {
             type: 'vector',
-            url: 'pmtiles:///maps/frailesca.pmtiles',
+            url: typeof window !== 'undefined'
+              ? `pmtiles://${window.location.origin}/maps/frailesca.pmtiles`
+              : 'pmtiles:///maps/frailesca.pmtiles',
             minzoom: 0,
             maxzoom: 15,
           },
