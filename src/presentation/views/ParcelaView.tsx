@@ -9,6 +9,7 @@ interface ParcelaViewProps {
 }
 
 export const ParcelaView: React.FC<ParcelaViewProps> = ({
+  parcelaInicial,
   onParcelaConfirmada,
 }) => {
   const handleConfirmada = (resultado: ResultadoParcelaConfirmada) => {
@@ -26,6 +27,7 @@ export const ParcelaView: React.FC<ParcelaViewProps> = ({
 
     const nuevaParcela: Parcela = {
       id_parcela: `parc_${Date.now()}`,
+      nombre: resultado.nombre || `Parcela ${resultado.areaHectareas.toFixed(2)} ha`,
       area_ha: resultado.areaHectareas,
       estado_region: resultado.estadoRegion,
       metodo_delimitacion: metodo,
@@ -43,7 +45,10 @@ export const ParcelaView: React.FC<ParcelaViewProps> = ({
   return (
     <div className="w-full h-full overflow-y-auto bg-cream p-3 sm:p-5">
       <div className="max-w-5xl mx-auto space-y-4">
-        <MapaParcelaNaskob onParcelaConfirmada={handleConfirmada} />
+        <MapaParcelaNaskob
+          onParcelaConfirmada={handleConfirmada}
+          nombreInicial={parcelaInicial?.nombre}
+        />
       </div>
     </div>
   );

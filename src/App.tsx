@@ -259,9 +259,14 @@ export default function App() {
         <div className="flex items-center gap-2">
           <BotonInstalarPWA />
           {parcelaActiva && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-ok-bg text-ok rounded-lg text-xs font-semibold border border-ok/30">
-              <MapPin className="w-3.5 h-3.5" />
-              <span>Parcela {parcelaActiva.area_ha} ha</span>
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-ok-bg text-ok rounded-lg text-xs font-semibold border border-ok/30 max-w-[160px] sm:max-w-xs truncate"
+              title={parcelaActiva.nombre || `Parcela ${parcelaActiva.area_ha} ha`}
+            >
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">
+                {parcelaActiva.nombre || `Parcela ${parcelaActiva.area_ha} ha`}
+              </span>
             </div>
           )}
         </div>

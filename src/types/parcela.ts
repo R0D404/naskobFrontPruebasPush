@@ -36,6 +36,7 @@ export interface PerfilAgroclimaticoNasa {
 }
 
 export interface ResultadoParcelaConfirmada {
+  nombre?: string;
   modoCaptura: ModoCaptura;
   modoMapaUsado: ModoVistaMapa;
   verticesWGS84: [number, number][]; // Siempre [lng, lat] en EPSG:4326
@@ -46,6 +47,7 @@ export interface ResultadoParcelaConfirmada {
       coordinates: [number, number][][];
     };
     properties: {
+      nombre?: string;
       area_ha: number;
       perimetro_m: number;
       modo_captura: ModoCaptura;

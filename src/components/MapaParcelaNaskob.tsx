@@ -15,6 +15,8 @@ import {
   Crosshair,
   ShieldCheck,
   WifiOff,
+  Tag,
+  Pencil,
 } from 'lucide-react';
 import {
   ModoVistaMapa,
@@ -30,6 +32,7 @@ import {
   BlobSource,
   getStoredMapBlob,
 } from '../utils/mapStorage';
+import { obtenerParcelasLocales } from '../utils/parcelasStorage';
 import { GestorMapaOffline } from './GestorMapaOffline';
 
 /**
@@ -67,12 +70,30 @@ const BBOX_CHIAPAS: [number, number, number, number] = [-94.2, 14.5, -90.35, 18.
 
 interface Props {
   onParcelaConfirmada: (resultado: ResultadoParcelaConfirmada) => void;
+  nombreInicial?: string;
 }
 
-export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
+export const MapaParcelaNaskob: React.FC<Props> = ({
+  onParcelaConfirmada,
+  nombreInicial,
+}) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const watchIdRef = useRef<number | null>(null);
+
+  // Nombre de la parcela asignado por el usuario o sugerido por defecto (Parcela 1, Parcela 2, etc.)
+  const [nombreParcela, setNombreParcela] = useState<string>(() => {
+    if (nombreInicial && nombreInicial.trim()) {
+      return nombreInicial;
+    }
+    try {
+      const locales = obtenerParcelasLocales();
+      const num = locales.length + 1;
+      return `Parcela ${num}`;
+    } catch {
+      return 'Parcela 1';
+    }
+  });
 
   // Referencia mutable para evitar clausuras obsoletas (stale closures) dentro de map.on('click')
   const caminandoActivoRef = useRef<boolean>(false);
@@ -876,7 +897,10 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
           )
         : ubicacionUsuario?.precision ?? null;
 
+    const nombreFinal = nombreParcela.trim() || 'Parcela';
+
     const resultado: ResultadoParcelaConfirmada = {
+      nombre: nombreFinal,
       modoCaptura,
       modoMapaUsado: modoVista,
       verticesWGS84: vertices,
@@ -887,6 +911,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
           coordinates: [analisisGeoespacial.anilloCerrado],
         },
         properties: {
+          nombre: nombreFinal,
           area_ha: analisisGeoespacial.areaHectareas,
           perimetro_m: analisisGeoespacial.perimetroMetros,
           modo_captura: modoCaptura,
@@ -910,6 +935,37 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
     <div className="w-full flex flex-col gap-3">
       {/* Gestor y Monitor de Almacenamiento de Mapas Offline */}
       <GestorMapaOffline onMapLoaded={handleMapLoaded} />
+
+      {/* Tarjeta de Nombre de la Parcela */}
+      <div className="bg-white border border-cream-line rounded-2xl p-2.5 sm:p-3 shadow-sm flex flex-col gap-1.5 w-full min-w-0">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <label
+            htmlFor="input-nombre-parcela"
+            className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted flex items-center gap-1.5 min-w-0"
+          >
+            <Tag className="w-3.5 h-3.5 text-maize shrink-0" />
+            <span className="truncate">Nombre de la Parcela</span>
+          </label>
+          <span className="text-[10px] text-ink-muted shrink-0 font-medium hidden sm:inline">
+            Toca para editar
+          </span>
+        </div>
+
+        <div className="relative flex items-center w-full min-w-0">
+          <input
+            id="input-nombre-parcela"
+            type="text"
+            value={nombreParcela}
+            onChange={(e) => setNombreParcela(e.target.value)}
+            placeholder="Ej: Parcela 1, Lote Don Pedro..."
+            maxLength={60}
+            className="w-full min-w-0 px-3 py-2 pr-9 text-xs sm:text-sm font-bold text-ink bg-cream/50 border border-cream-line rounded-xl focus:outline-none focus:ring-1 focus:ring-ink focus:border-ink focus:bg-white transition-all shadow-2xs truncate"
+          />
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-ink-muted shrink-0">
+            <Pencil className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      </div>
 
       {/* Barra de Control Compacta: Selector de Modo y Estado GPS */}
       <div className="bg-white border border-cream-line rounded-2xl p-2 sm:p-3 shadow-sm flex flex-col gap-2">
@@ -1117,9 +1173,16 @@ export const MapaParcelaNaskob: React.FC<Props> = ({ onParcelaConfirmada }) => {
         <div className="bg-white border-2 border-ink/20 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col gap-3.5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-cream-line pb-3">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
-                Superficie Calculada del Polígono (RF01)
-              </span>
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">
+                  Superficie Calculada del Polígono (RF01)
+                </span>
+                {nombreParcela.trim() && (
+                  <span className="text-[11px] font-extrabold text-ink bg-cream px-2 py-0.5 rounded-md border border-cream-line truncate max-w-[200px]">
+                    {nombreParcela.trim()}
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap items-baseline gap-2 mt-0.5">
                 <span className="text-2xl font-extrabold text-ink">
                   {analisisGeoespacial.areaHectareas} ha
