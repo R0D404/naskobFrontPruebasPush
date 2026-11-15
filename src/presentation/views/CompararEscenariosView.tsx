@@ -12,6 +12,7 @@ import {
   WifiOff,
   RefreshCw,
   FolderOpen,
+  CloudRain,
 } from 'lucide-react';
 import { DeclaracionCompleta } from '@/domain/models/declaracion';
 import { Parcela } from '@/domain/models/parcela';
@@ -22,11 +23,12 @@ import {
 import { evaluacionService } from '@/compositionRoot';
 import { ExportarReporteService } from '@/application/services/ExportarReporteService';
 import { TarjetaEscenarioDetalle } from '@/presentation/components/domain/TarjetaEscenarioDetalle';
+import { PerfilAgroclimaticoView } from '@/presentation/components/domain/PerfilAgroclimaticoView';
 import { guardarParcelaLocal, marcarParcelaComoSincronizada } from '@/utils/parcelasStorage';
 import { apiParcelaAdapter } from '@/infrastructure/adapters/apiParcelaAdapter';
 import { obtenerSesion } from '@/utils/sessionStorage';
 
-export type SubvistaComparador = 'lista' | 'detalle';
+export type SubvistaComparador = 'lista' | 'detalle' | 'perfil_climatico';
 
 export interface CompararEscenariosViewProps {
   declaracion: DeclaracionCompleta;
@@ -305,6 +307,35 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
               </div>
             </div>
 
+            {/* Banner de Acceso al Perfil Agroclimático y Lluvias NASA */}
+            <div
+              onClick={() => setSubvista('perfil_climatico')}
+              className="bg-gradient-to-r from-blue-900 via-slate-900 to-blue-950 text-white rounded-2xl p-3.5 shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3 cursor-pointer border border-blue-800/60 active:scale-[0.99] group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0 border border-blue-400/30 shadow-inner group-hover:scale-105 transition-transform">
+                  <CloudRain className="w-5 h-5 text-blue-200" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300">
+                      Serie Satelital NASA (2001–2025)
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-extrabold text-white leading-tight mt-0.5">
+                    Perfil de Lluvias y Clima de tu Parcela
+                  </h3>
+                  <p className="text-[11px] text-blue-100/75 leading-snug">
+                    Consulta las fechas de temporal, sequías históricas y lluvias mensuales
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 text-xs font-bold text-blue-300 shrink-0 group-hover:translate-x-1 transition-transform">
+                <span className="hidden sm:inline">Ver clima</span>
+                <span className="text-sm font-bold">→</span>
+              </div>
+            </div>
+
             {/* Mapeo dinámico de escenarios desde la API */}
             <div className="space-y-3 pt-1">
               {(() => {
@@ -513,6 +544,17 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
           <TarjetaEscenarioDetalle
             escenario={escenarioActual}
             alVolverAPropuestas={() => setSubvista('lista')}
+            alAbrirPerfilClimatico={() => setSubvista('perfil_climatico')}
+          />
+        )}
+
+        {/* ============================================================== */}
+        {/* VISTA 3: PERFIL AGROCLIMÁTICO Y LLUVIAS NASA                    */}
+        {/* ============================================================== */}
+        {subvista === 'perfil_climatico' && (
+          <PerfilAgroclimaticoView
+            parcela={parcela}
+            alVolver={() => setSubvista('lista')}
           />
         )}
       </div>

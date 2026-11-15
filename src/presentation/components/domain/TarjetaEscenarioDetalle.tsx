@@ -8,17 +8,20 @@ import {
   Sprout,
   Info,
   Sparkles,
+  CloudRain,
 } from 'lucide-react';
 import { EscenarioResultado } from '@/domain/models/evaluacion';
 
 export interface TarjetaEscenarioDetalleProps {
   escenario: EscenarioResultado;
   alVolverAPropuestas: () => void;
+  alAbrirPerfilClimatico?: () => void;
 }
 
 export const TarjetaEscenarioDetalle: React.FC<TarjetaEscenarioDetalleProps> = ({
   escenario,
   alVolverAPropuestas,
+  alAbrirPerfilClimatico,
 }) => {
   const tarjeta = escenario.tarjeta_5_partes;
   const scoreAjuste = escenario.puntaje_valor;
@@ -312,6 +315,21 @@ export const TarjetaEscenarioDetalle: React.FC<TarjetaEscenarioDetalleProps> = (
             <strong>Nota de campo:</strong> Esta herramienta apoya tu decisión; no sustituye la experiencia local ni a un técnico agrícola.
           </p>
         </div>
+
+        {/* Acceso al Perfil Agroclimático y Lluvias NASA */}
+        {alAbrirPerfilClimatico && (
+          <button
+            type="button"
+            onClick={alAbrirPerfilClimatico}
+            className="w-full py-2.5 px-3.5 bg-blue-50/90 hover:bg-blue-100 border border-blue-200 text-blue-900 rounded-xl text-xs font-bold flex items-center justify-between transition-colors shadow-xs cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <CloudRain className="w-4 h-4 text-blue-600" />
+              <span>Ver lluvias y clima histórico de tu parcela (NASA)</span>
+            </div>
+            <span className="text-blue-600 font-bold">→</span>
+          </button>
+        )}
 
         {/* Botón Primario: Volver a Propuestas */}
         <button
