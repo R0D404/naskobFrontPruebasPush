@@ -212,7 +212,7 @@ export const MapaParcelaNaskob: React.FC<Props> = ({
         type: 'vector',
         url: 'pmtiles://chiapas',
         minzoom: 0,
-        maxzoom: 15,
+        maxzoom: 14,
       };
     }
 
