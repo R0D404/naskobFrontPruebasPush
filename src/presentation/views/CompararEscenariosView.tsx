@@ -544,7 +544,6 @@ export const CompararEscenariosView: React.FC<CompararEscenariosViewProps> = ({
           <TarjetaEscenarioDetalle
             escenario={escenarioActual}
             alVolverAPropuestas={() => setSubvista('lista')}
-            alAbrirPerfilClimatico={() => setSubvista('perfil_climatico')}
           />
         )}
 

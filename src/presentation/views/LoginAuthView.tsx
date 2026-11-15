@@ -145,7 +145,7 @@ export const LoginAuthView: React.FC<LoginAuthViewProps> = ({ alAutenticar }) =>
                 Estado de Chiapas
               </span>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight">
-                NasKob · Rotación Resiliente
+                NasKob
               </h1>
               <p className="text-xs sm:text-sm text-ink-muted leading-relaxed max-w-sm mx-auto">
                 Decisión agronómica y resiliencia climática con datos satelitales de la NASA para productores de Chiapas.

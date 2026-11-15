@@ -394,7 +394,7 @@ export const DashboardParcelasView: React.FC<DashboardParcelasViewProps> = ({
 
       {/* Pie de Página */}
       <footer className="text-center text-[11px] text-ink-muted/80 py-4 shrink-0 border-t border-cream-line/50">
-        NasKob · Rotación Resiliente · Chiapas · NASA Space Apps Challenge
+        NasKob · Chiapas · NASA Space Apps Challenge
       </footer>
     </div>
   );
